@@ -1,0 +1,1 @@
+export { PDFViewer as default } from './pdf/PDFViewer';
