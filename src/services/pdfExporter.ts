@@ -10,6 +10,7 @@ import type { DocumentState } from '../types/pdf';
 import type {
   EditorObject,
   TextObject,
+  WhiteoutObject,
   DrawObject,
   HighlightObject,
   ShapeObject,
@@ -132,6 +133,9 @@ export async function exportPdfDocument(
           case 'mark':
             drawFormMarkOnPage(destPage, obj, pageWidth, pageHeight, rotation);
             break;
+          case 'whiteout':
+            drawWhiteoutOnPage(destPage, obj, pageWidth, pageHeight, rotation);
+            break;
         }
       } catch (err) {
         console.error(`Failed to draw object ${obj.id} on page:`, err);
@@ -223,6 +227,26 @@ function drawHighlightOnPage(
     height: obj.height,
     color,
     opacity: obj.opacity || 0.4,
+  });
+}
+
+function drawWhiteoutOnPage(
+  page: PDFPage,
+  obj: WhiteoutObject,
+  pageWidth: number,
+  pageHeight: number,
+  rotation: number
+) {
+  const pt = visualToPdfPoint(obj.x, obj.y + obj.height, pageWidth, pageHeight, rotation);
+  const color = hexToRgbColor(obj.color || '#ffffff');
+
+  page.drawRectangle({
+    x: pt.x,
+    y: pt.y,
+    width: obj.width,
+    height: obj.height,
+    color,
+    opacity: obj.opacity ?? 1,
   });
 }
 

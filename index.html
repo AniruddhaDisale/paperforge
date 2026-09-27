@@ -3,74 +3,151 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- Signature Google Fonts -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Signature & UI Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Great+Vibes&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Dancing+Script:wght@600&family=Great+Vibes&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://paperforge.vercel.app/" />
+
     <!-- Primary SEO Meta Tags -->
-    <title>PaperForge | Free Online PDF Editor — Annotate, Edit & Export</title>
-    <meta name="title" content="PaperForge | Free Online PDF Editor — Annotate, Edit & Export" />
+    <title>PaperForge | Free Online PDF Editor — Edit, Sign, Watermark &amp; Export</title>
+    <meta name="title" content="PaperForge | Free Online PDF Editor — Edit, Sign, Watermark &amp; Export" />
     <meta
       name="description"
-      content="PaperForge is a fast, lightweight, and 100% private browser-based PDF editor. Annotate with text, freehand drawing, highlights, shapes, and images. Reorder, rotate, and export PDFs with zero server uploads."
+      content="PaperForge is a 100% free, private, browser-based PDF editor. Edit existing text, add signatures, watermarks, page numbers, annotate, draw, highlight, organize pages, and export PDFs — all without uploading files to any server."
     />
     <meta
       name="keywords"
-      content="PDF editor, online PDF editor, free PDF editor, edit PDF in browser, annotate PDF, draw on PDF, highlight PDF, insert images in PDF, rotate PDF pages, reorder PDF, privacy-first PDF editor, client-side PDF tool"
+      content="PDF editor, online PDF editor, free PDF editor, edit PDF text, edit existing PDF text, add watermark to PDF, PDF page numbers, PDF signature, annotate PDF, draw on PDF, highlight PDF, redact PDF, insert images in PDF, rotate PDF pages, reorder PDF pages, privacy-first PDF editor, client-side PDF tool, ilovepdf alternative, smallpdf alternative"
     />
     <meta name="author" content="PaperForge" />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#18181b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="PaperForge | Free Online PDF Editor" />
+    <meta property="og:url" content="https://paperforge.vercel.app/" />
+    <meta property="og:title" content="PaperForge | Free Online PDF Editor — Edit, Sign &amp; Watermark" />
     <meta
       property="og:description"
-      content="A fast, modern PDF editor that keeps your documents in your hands. Annotate, edit, and export PDFs entirely in your browser."
+      content="Edit PDF text, add digital signatures, watermarks, page numbers, and annotations. 100% private — your files never leave your browser."
     />
     <meta property="og:site_name" content="PaperForge" />
+    <meta property="og:image" content="https://paperforge.vercel.app/og-image.png" />
 
-    <!-- Twitter -->
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://paperforge.vercel.app/" />
     <meta name="twitter:title" content="PaperForge | Free Online PDF Editor" />
     <meta
       name="twitter:description"
-      content="Edit, annotate, transform, and export PDF documents securely in your browser. No files uploaded to external servers."
+      content="Edit, annotate, watermark, sign, and export PDF documents securely in your browser. No server uploads. 100% private."
     />
+    <meta name="twitter:image" content="https://paperforge.vercel.app/og-image.png" />
 
-    <!-- Structured Data (JSON-LD) for Google Rich Snippets -->
+    <!-- Structured Data: WebApplication -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "PaperForge",
+        "url": "https://paperforge.vercel.app/",
         "applicationCategory": "ProductivityApplication",
         "operatingSystem": "All",
-        "browserRequirements": "Requires JavaScript",
-        "description": "Fast, privacy-focused online PDF editor. Annotate, add text, draw, highlight, insert shapes and images, manage pages, and export PDFs directly in your browser without uploading files to external servers.",
+        "browserRequirements": "Requires JavaScript. Works in Chrome, Firefox, Safari, Edge.",
+        "description": "PaperForge is a free, privacy-first, browser-based PDF editor. Edit existing PDF text, add digital signatures, watermarks, page numbers, annotations, images, and shapes. Organize, rotate, and reorder pages. Export high-quality PDFs — all 100% client-side.",
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD"
         },
         "featureList": [
-          "Add and edit text overlays",
+          "Edit existing text in PDF",
+          "Add and style new text overlays",
+          "Whiteout and redaction tool",
+          "Add watermark to PDF",
+          "Add page numbers",
+          "Digital signatures (cursive & drawn)",
+          "Business stamp annotations",
           "Freehand vector drawing",
           "Translucent highlighting",
           "Rectangle, circle, line, and arrow shapes",
           "Image insertion",
+          "Dark mode",
           "Rotate, delete, and reorder pages",
           "Add blank pages",
-          "Client-side 100% private processing"
+          "Organize pages with drag-and-drop",
+          "Export as PDF or PNG",
+          "100% client-side — files never uploaded to servers"
         ]
       }
     </script>
+
+    <!-- Structured Data: FAQPage for Google rich snippets -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Can I edit existing text in a PDF for free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! PaperForge has an 'Edit PDF Text' tool that lets you click on any existing text in your PDF to modify it directly. It overlays a white mask over the original text and creates an editable text box, all 100% in your browser for free."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is PaperForge secure? Are my files uploaded to a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "PaperForge is 100% client-side. Your PDF files are never uploaded to any server — all editing, annotation, and export happens entirely within your web browser using modern browser APIs."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I add a digital signature to a PDF?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Click the 'Signature' button in the toolbar. You can draw your signature with a mouse or touch, or choose from elegant pre-designed cursive font signatures. The signature is embedded directly into your PDF when you export."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I add a watermark to a PDF?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. PaperForge includes a Watermark tool where you can add text watermarks like CONFIDENTIAL, DRAFT, or custom text. You can control opacity, font size, rotation angle, and apply the watermark to all pages or just the current page."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does PaperForge work on mobile phones?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! PaperForge is fully optimized for mobile screens. The toolbar is horizontally scrollable with touch-friendly targets, the sidebar becomes a slide-out drawer, and the PDF canvas auto-scales to fit your screen."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <!-- Semantic accessibility headings (hidden visually, readable by search engines) -->
+    <style>
+      .seo-heading { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    </style>
   </head>
   <body>
+    <h1 class="seo-heading">PaperForge — Free Online PDF Editor</h1>
+    <h2 class="seo-heading">Edit PDF Text, Add Signatures, Watermarks, Page Numbers &amp; Annotations</h2>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

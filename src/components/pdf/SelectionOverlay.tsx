@@ -6,6 +6,7 @@ import type {
   Point,
   ResizeHandle,
   TextObject,
+  WhiteoutObject,
   DrawObject,
   HighlightObject,
   ShapeObject,
@@ -13,11 +14,14 @@ import type {
   SignatureObject,
   StampObject,
   FormMarkObject,
+  ExtractedTextItem,
 } from '../../types/editor';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { screenToPdf, normalizeRect } from '../../utils/coordinates';
 import { getBoundingBox, applyResize, pointsToSvgPath } from '../../utils/geometry';
 import { SelectionBox } from '../editor/SelectionBox';
 import { TextAnnotation } from '../editor/TextAnnotation';
+import { WhiteoutAnnotation } from '../editor/WhiteoutAnnotation';
 import { DrawingLayer } from '../editor/DrawingLayer';
 import { HighlightAnnotation } from '../editor/HighlightAnnotation';
 import { ShapeAnnotation } from '../editor/ShapeAnnotation';
@@ -25,6 +29,7 @@ import { ImageAnnotation } from '../editor/ImageAnnotation';
 import { SignatureAnnotation } from '../editor/SignatureAnnotation';
 import { StampAnnotation } from '../editor/StampAnnotation';
 import { FormMarkAnnotation } from '../editor/FormMarkAnnotation';
+import { TextDetectionLayer } from './TextDetectionLayer';
 
 interface SelectionOverlayProps {
   pageId: string;
@@ -35,6 +40,8 @@ interface SelectionOverlayProps {
   properties: ToolProperties;
   objects: EditorObject[];
   selectedObjectId: string | null;
+  pdfDocument?: PDFDocumentProxy | null;
+  originalPageIndex?: number;
   onSelectObject: (id: string | null) => void;
   onAddObject: (obj: EditorObject) => void;
   onUpdateObject: (id: string, updates: Partial<EditorObject>) => void;
@@ -53,6 +60,8 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   properties,
   objects,
   selectedObjectId,
+  pdfDocument,
+  originalPageIndex,
   onSelectObject,
   onAddObject,
   onUpdateObject,
@@ -66,7 +75,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   // Active drawing stroke state
   const [activeStroke, setActiveStroke] = useState<Point[]>([]);
 
-  // Active drag creation for highlight / shape
+  // Active drag creation for highlight / shape / eraser
   const [dragStartPoint, setDragStartPoint] = useState<Point | null>(null);
   const [dragCurrentPoint, setDragCurrentPoint] = useState<Point | null>(null);
 
@@ -80,6 +89,48 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
 
   const selectedObject = objects.find((o) => o.id === selectedObjectId) || null;
 
+  // Converts detected text block into whiteout mask + editable text object
+  const handleSelectTextItem = useCallback(
+    (item: ExtractedTextItem) => {
+      // 1. Create a whiteout mask that covers the existing text
+      const mask: WhiteoutObject = {
+        id: `whiteout-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        pageId,
+        type: 'whiteout',
+        x: item.x - 2,
+        y: item.y - 1,
+        width: item.width + 4,
+        height: item.height + 2,
+        color: '#ffffff',
+        opacity: 1,
+      };
+
+      // 2. Create the replacement editable TextObject
+      const textObj: TextObject = {
+        id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        pageId,
+        type: 'text',
+        x: item.x,
+        y: item.y,
+        width: Math.max(item.width + 12, 60),
+        height: Math.max(item.height, item.fontSize * 1.25),
+        text: item.text,
+        fontSize: item.fontSize,
+        fontFamily: properties.fontFamily || 'Helvetica',
+        color: properties.textColor || '#0f172a',
+        isBold: false,
+        isItalic: false,
+        align: 'left',
+      };
+
+      onAddObject(mask);
+      onAddObject(textObj);
+      onSelectObject(textObj.id);
+      if (onCommitOperation) onCommitOperation();
+    },
+    [pageId, properties.fontFamily, properties.textColor, onAddObject, onSelectObject, onCommitOperation]
+  );
+
   // Handles pointer down on the overlay background
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -87,7 +138,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
       const rect = overlayRef.current.getBoundingClientRect();
       const pdfPt = screenToPdf(e.clientX, e.clientY, rect, zoom);
 
-      if (activeTool === 'select') {
+      if (activeTool === 'select' || activeTool === 'editText') {
         // Clicked background -> deselect
         onSelectObject(null);
         return;
@@ -144,7 +195,7 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
         return;
       }
 
-      if (activeTool === 'highlight' || activeTool === 'shape') {
+      if (activeTool === 'highlight' || activeTool === 'shape' || activeTool === 'eraser') {
         e.preventDefault();
         overlayRef.current.setPointerCapture(e.pointerId);
         setDragStartPoint(pdfPt);
@@ -203,8 +254,8 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
         return;
       }
 
-      // Highlight or Shape dragging
-      if ((activeTool === 'highlight' || activeTool === 'shape') && dragStartPoint) {
+      // Highlight, Shape, or Eraser dragging
+      if ((activeTool === 'highlight' || activeTool === 'shape' || activeTool === 'eraser') && dragStartPoint) {
         setDragCurrentPoint(pdfPt);
         return;
       }
@@ -251,6 +302,29 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
           onSelectObject(newDraw.id);
         }
         setActiveStroke([]);
+        return;
+      }
+
+      // Commit eraser / whiteout box
+      if (activeTool === 'eraser' && dragStartPoint && dragCurrentPoint) {
+        const r = normalizeRect(dragStartPoint, dragCurrentPoint);
+        if (r.width > 2 && r.height > 2) {
+          const newWhiteout: WhiteoutObject = {
+            id: `whiteout-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            pageId,
+            type: 'whiteout',
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+            color: properties.whiteoutColor || '#ffffff',
+            opacity: 1,
+          };
+          onAddObject(newWhiteout);
+          onSelectObject(newWhiteout.id);
+        }
+        setDragStartPoint(null);
+        setDragCurrentPoint(null);
         return;
       }
 
@@ -564,6 +638,50 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
             mixBlendMode: 'multiply',
             pointerEvents: 'none',
           }}
+        />
+      )}
+
+      {/* Whiteout / Redaction Layer */}
+      {objects
+        .filter((o): o is WhiteoutObject => o.type === 'whiteout')
+        .map((wo) => (
+          <WhiteoutAnnotation
+            key={wo.id}
+            object={wo}
+            zoom={zoom}
+            isSelected={wo.id === selectedObjectId}
+            onSelect={() => onSelectObject(wo.id)}
+            onStartMove={(e) => startMoveObject(wo, e)}
+          />
+        ))}
+
+      {/* Active Eraser / Redaction Drag Preview */}
+      {activeTool === 'eraser' && dragRect && (
+        <div
+          style={{
+            position: 'absolute',
+            left: dragRect.x * zoom,
+            top: dragRect.y * zoom,
+            width: dragRect.width * zoom,
+            height: dragRect.height * zoom,
+            backgroundColor: properties.whiteoutColor || '#ffffff',
+            border: '1.5px dashed var(--accent-primary, #6366f1)',
+            opacity: 0.9,
+            pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            zIndex: 10,
+          }}
+        />
+      )}
+
+      {/* Text Detection Layer for Editing Existing PDF Text */}
+      {pdfDocument && originalPageIndex !== undefined && (
+        <TextDetectionLayer
+          pdfDocument={pdfDocument}
+          originalPageIndex={originalPageIndex}
+          zoom={zoom}
+          isActive={activeTool === 'editText'}
+          onSelectTextItem={handleSelectTextItem}
         />
       )}
 

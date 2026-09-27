@@ -1,9 +1,11 @@
 export type ToolType =
   | 'select'
   | 'text'
+  | 'editText'
   | 'draw'
   | 'highlight'
   | 'shape'
+  | 'eraser'
   | 'image'
   | 'signature'
   | 'stamp'
@@ -34,6 +36,12 @@ export interface TextObject extends BaseEditorObject {
   isBold: boolean;
   isItalic: boolean;
   align: 'left' | 'center' | 'right';
+}
+
+export interface WhiteoutObject extends BaseEditorObject {
+  type: 'whiteout';
+  color: string; // #ffffff for whiteout or #000000 for redaction
+  opacity: number;
 }
 
 export interface Point {
@@ -96,6 +104,7 @@ export interface FormMarkObject extends BaseEditorObject {
 
 export type EditorObject =
   | TextObject
+  | WhiteoutObject
   | DrawObject
   | HighlightObject
   | ShapeObject
@@ -103,6 +112,37 @@ export type EditorObject =
   | SignatureObject
   | StampObject
   | FormMarkObject;
+
+export interface ExtractedTextItem {
+  id: string;
+  text: string;
+  x: number; // visual PDF pt (top-left)
+  y: number; // visual PDF pt (top-left)
+  width: number;
+  height: number;
+  fontSize: number;
+  fontFamily?: string;
+}
+
+export interface WatermarkConfig {
+  text: string;
+  color: string;
+  opacity: number;
+  fontSize: number;
+  rotation: number;
+  allPages: boolean;
+}
+
+export type PageNumberPosition = 'bottom-center' | 'bottom-right' | 'top-right';
+export type PageNumberFormat = 'page-n' | 'n-of-total' | 'n';
+
+export interface PageNumberConfig {
+  position: PageNumberPosition;
+  format: PageNumberFormat;
+  fontSize: number;
+  color: string;
+  startNumber: number;
+}
 
 export interface ToolProperties {
   textColor: string;
@@ -123,6 +163,7 @@ export interface ToolProperties {
   shapeOpacity: number;
   markType: FormMarkType;
   markColor: string;
+  whiteoutColor?: string;
 }
 
 export interface HistorySnapshot {

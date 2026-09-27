@@ -37,6 +37,8 @@ interface WorkspaceProps {
   onImageUploadClick: () => void;
   onOpenSignatureDialog: () => void;
   onOpenStampDialog: () => void;
+  onOpenWatermarkDialog: () => void;
+  onOpenPageNumberDialog: () => void;
   onOpenOrganizePages?: () => void;
   theme?: 'light' | 'dark';
   onToggleTheme?: () => void;
@@ -77,6 +79,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onImageUploadClick,
   onOpenSignatureDialog,
   onOpenStampDialog,
+  onOpenWatermarkDialog,
+  onOpenPageNumberDialog,
   onOpenOrganizePages,
   theme,
   onToggleTheme,
@@ -104,6 +108,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           onSelectMarkType={(m) => onChangeProperties({ markType: m })}
           onOpenSignatureDialog={onOpenSignatureDialog}
           onOpenStampDialog={onOpenStampDialog}
+          onOpenWatermarkDialog={onOpenWatermarkDialog}
+          onOpenPageNumberDialog={onOpenPageNumberDialog}
           onUploadClick={onUploadClick}
           onImageUploadClick={onImageUploadClick}
           onDeleteSelected={onDeleteSelected}

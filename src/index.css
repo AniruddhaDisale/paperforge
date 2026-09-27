@@ -1,12 +1,16 @@
 @import './styles/theme.css';
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -36,7 +40,9 @@ button:disabled {
   cursor: not-allowed !important;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: 13px;
   color: var(--text-primary);
@@ -552,7 +558,7 @@ input, select, textarea {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: transform 0.1s ease;
 }
@@ -633,14 +639,53 @@ input, select, textarea {
   pointer-events: auto;
 }
 
-.resize-handle.handle-nw { top: -5px; left: -5px; cursor: nwse-resize; }
-.resize-handle.handle-n { top: -5px; left: calc(50% - 4px); cursor: ns-resize; }
-.resize-handle.handle-ne { top: -5px; right: -5px; cursor: nesw-resize; }
-.resize-handle.handle-e { top: calc(50% - 4px); right: -5px; cursor: ew-resize; }
-.resize-handle.handle-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
-.resize-handle.handle-s { bottom: -5px; left: calc(50% - 4px); cursor: ns-resize; }
-.resize-handle.handle-sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
-.resize-handle.handle-w { top: calc(50% - 4px); left: -5px; cursor: ew-resize; }
+.resize-handle.handle-nw {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+
+.resize-handle.handle-n {
+  top: -5px;
+  left: calc(50% - 4px);
+  cursor: ns-resize;
+}
+
+.resize-handle.handle-ne {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.handle-e {
+  top: calc(50% - 4px);
+  right: -5px;
+  cursor: ew-resize;
+}
+
+.resize-handle.handle-se {
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+}
+
+.resize-handle.handle-s {
+  bottom: -5px;
+  left: calc(50% - 4px);
+  cursor: ns-resize;
+}
+
+.resize-handle.handle-sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.handle-w {
+  top: calc(50% - 4px);
+  left: -5px;
+  cursor: ew-resize;
+}
 
 .selection-actions-bar {
   position: absolute;
@@ -819,7 +864,8 @@ input, select, textarea {
   box-shadow: 0 14px 30px -4px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-.page-controls, .zoom-controls {
+.page-controls,
+.zoom-controls {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -954,8 +1000,15 @@ input, select, textarea {
 }
 
 @keyframes toastFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Loading Spinner */
@@ -974,7 +1027,9 @@ input, select, textarea {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ==========================================================================
@@ -1003,8 +1058,15 @@ input, select, textarea {
 }
 
 @keyframes floatFadeIn {
-  from { opacity: 0; transform: translate(-50%, 6px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .floating-btn {
@@ -1367,4 +1429,292 @@ input, select, textarea {
 .tool-popover-item.active {
   background: var(--bg-surface-active);
   font-weight: 500;
+}
+
+/* ==========================================================================
+   Tool Highlight Glow (for Edit PDF Text star button)
+   ========================================================================== */
+.tool-highlight-glow:not(:disabled) {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--accent-primary, #6366f1);
+}
+
+.tool-highlight-glow:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.16);
+  color: var(--accent-primary, #6366f1);
+  box-shadow: 0 0 0 1.5px rgba(99, 102, 241, 0.35);
+}
+
+.tool-highlight-glow.active {
+  background: var(--accent-primary, #6366f1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* ==========================================================================
+   Cursor styles for new tools
+   ========================================================================== */
+.selection-overlay.tool-editText {
+  cursor: text;
+}
+
+.selection-overlay.tool-eraser {
+  cursor: crosshair;
+}
+
+/* ==========================================================================
+   Extracted Text Detection Layer Styles
+   ========================================================================== */
+.text-detection-layer .extracted-text-box {
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.text-detection-layer .extracted-text-box.hovered {
+  z-index: 6;
+}
+
+/* ==========================================================================
+   Whiteout/Redaction Block Styles
+   ========================================================================== */
+.whiteout-annotation {
+  transition: box-shadow 0.12s ease;
+}
+
+.whiteout-annotation.selected {
+  box-shadow: 0 0 0 2px var(--accent-primary, #6366f1), 0 2px 8px rgba(99, 102, 241, 0.25) !important;
+}
+
+/* ==========================================================================
+   btn.active  (used in WatermarkDialog, PageNumberDialog)
+   ========================================================================== */
+.btn-secondary.active {
+  border-color: var(--accent-primary, #6366f1);
+  color: var(--accent-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+/* ==========================================================================
+   Prop toggle-btn with non-icon text
+   ========================================================================== */
+.prop-toggle-btn {
+  width: auto;
+  padding: 0 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Sidebar mobile backdrop
+   ========================================================================== */
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ==========================================================================
+   Mobile-first Responsive Overrides -- <= 768px
+   ========================================================================== */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 10px;
+    height: 48px;
+  }
+
+  .topbar-left {
+    gap: 8px;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .document-title-badge {
+    max-width: 140px;
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+
+  .topbar-center {
+    gap: 4px;
+  }
+
+  .topbar-right {
+    gap: 6px;
+  }
+
+  /* Sidebar -- slide-out drawer */
+  .page-sidebar {
+    position: fixed;
+    top: 48px;
+    left: 0;
+    bottom: 0;
+    width: 220px !important;
+    z-index: 500;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-lg);
+    border-right: none;
+  }
+
+  .page-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 499;
+    top: 48px;
+  }
+
+  /* Editor Toolbar -- horizontally scrollable touch strip */
+  .editor-toolbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    padding: 6px 10px;
+    gap: 4px;
+  }
+
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tool-item {
+    height: 38px;
+    min-height: 44px;
+    padding: 0 10px;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+
+  /* Property bar -- scrollable */
+  .property-bar {
+    height: auto;
+    min-height: 38px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    padding: 6px 12px;
+  }
+
+  .property-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Document area */
+  .document-area {
+    padding: 12px 8px;
+  }
+
+  /* Bottom bar */
+  .bottombar {
+    padding: 5px 10px;
+    gap: 8px;
+    font-size: 12px;
+    bottom: 12px;
+  }
+
+  .page-indicator-text,
+  .zoom-indicator-text {
+    font-size: 11px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Modals */
+  .modal-dialog {
+    max-width: 96vw !important;
+    margin: 16px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Organize grid -- 2 cols on tablet */
+  .organize-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .organize-modal-content {
+    width: 98vw;
+    height: 90vh;
+  }
+}
+
+/* <= 480px -- phones */
+@media (max-width: 480px) {
+  .topbar {
+    height: 44px;
+  }
+
+  .page-sidebar {
+    top: 44px;
+    width: 200px !important;
+  }
+
+  .document-area {
+    padding: 8px 4px;
+  }
+
+  .empty-state-container {
+    padding: 32px 16px;
+  }
+
+  .empty-state-title {
+    font-size: 17px;
+  }
+
+  .empty-state-desc {
+    font-size: 13px;
+  }
+
+  .upload-primary-btn {
+    width: 180px;
+    font-size: 13px;
+  }
+
+  .bottombar {
+    gap: 6px;
+    padding: 5px 8px;
+    font-size: 11px;
+    bottom: 8px;
+  }
+
+  .topbar-right .icon-btn.secondary-action {
+    display: none;
+  }
+
+  .organize-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+/* ==========================================================================
+   Pulse animation for TextDetectionLayer loading indicator
+   ========================================================================== */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
 }

@@ -7,6 +7,9 @@ import type {
   ImageObject,
   SignatureObject,
   StampObject,
+  TextObject,
+  WatermarkConfig,
+  PageNumberConfig,
 } from './types/editor';
 import type { PageSize } from './types/pdf';
 import { usePdfDocument } from './hooks/usePdfDocument';
@@ -25,6 +28,8 @@ import { SignatureDialog } from './components/dialogs/SignatureDialog';
 import { StampDialog } from './components/dialogs/StampDialog';
 import { OrganizePagesDialog } from './components/dialogs/OrganizePagesDialog';
 import { DocumentInfoDialog } from './components/dialogs/DocumentInfoDialog';
+import { WatermarkDialog } from './components/dialogs/WatermarkDialog';
+import { PageNumberDialog } from './components/dialogs/PageNumberDialog';
 import { Toast, type ToastItem } from './components/common/Toast';
 import {
   normalizeImageToPng,
@@ -99,6 +104,8 @@ export function App() {
   const [isStampOpen, setIsStampOpen] = useState(false);
   const [isOrganizePagesOpen, setIsOrganizePagesOpen] = useState(false);
   const [isDocumentInfoOpen, setIsDocumentInfoOpen] = useState(false);
+  const [isWatermarkOpen, setIsWatermarkOpen] = useState(false);
+  const [isPageNumberOpen, setIsPageNumberOpen] = useState(false);
 
   // Dark Mode Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -132,7 +139,7 @@ export function App() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   // Export progress modal
@@ -461,6 +468,103 @@ export function App() {
     addToast('success', `Stamp "${stamp.label}" placed on document`);
   }, [currentPage, handleAddObject, addToast]);
 
+  // Apply Watermark (across pages or current page only)
+  const handleApplyWatermark = useCallback((config: WatermarkConfig) => {
+    setIsWatermarkOpen(false);
+    const pages = config.allPages ? documentState.pages : currentPage ? [currentPage] : [];
+    if (pages.length === 0) return;
+
+    const nextObjects = { ...objectsByPage };
+    for (const page of pages) {
+      const wmW = Math.min(page.width * 0.9, config.fontSize * config.text.length * 0.65);
+      const wmH = config.fontSize * 1.4;
+      const x = Math.round((page.width - wmW) / 2);
+      const y = Math.round((page.height - wmH) / 2);
+      const wmObj: TextObject = {
+        id: `watermark-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        pageId: page.id,
+        type: 'text',
+        text: config.text,
+        fontSize: config.fontSize,
+        fontFamily: 'Helvetica',
+        color: config.color,
+        isBold: true,
+        isItalic: false,
+        align: 'center',
+        x,
+        y,
+        width: wmW,
+        height: wmH,
+        opacity: config.opacity,
+      };
+      nextObjects[page.id] = [...(nextObjects[page.id] || []), wmObj];
+    }
+    setObjectsByPage(nextObjects);
+    commitSnapshot(documentState.pages, nextObjects);
+    addToast('success', `Watermark "${config.text}" applied to ${pages.length} page(s)`);
+  }, [documentState.pages, currentPage, objectsByPage, commitSnapshot, addToast]);
+
+  // Apply Page Numbers (text annotations on all pages)
+  const handleApplyPageNumbers = useCallback((config: PageNumberConfig) => {
+    setIsPageNumberOpen(false);
+    if (documentState.pages.length === 0) return;
+
+    const nextObjects = { ...objectsByPage };
+    const totalPages = documentState.pages.length;
+
+    for (let i = 0; i < totalPages; i++) {
+      const page = documentState.pages[i];
+      const pageNum = config.startNumber + i;
+      let displayText: string;
+      switch (config.format) {
+        case 'n': displayText = `${pageNum}`; break;
+        case 'n-of-total': displayText = `${pageNum} of ${config.startNumber + totalPages - 1}`; break;
+        case 'page-n': default: displayText = `Page ${pageNum}`; break;
+      }
+      const textW = displayText.length * config.fontSize * 0.6;
+      const textH = config.fontSize * 1.5;
+      const margin = 30;
+      let x: number;
+      let y: number;
+      switch (config.position) {
+        case 'top-right':
+          x = page.width - textW - margin;
+          y = margin;
+          break;
+        case 'bottom-right':
+          x = page.width - textW - margin;
+          y = page.height - textH - margin;
+          break;
+        case 'bottom-center':
+        default:
+          x = Math.round((page.width - textW) / 2);
+          y = page.height - textH - margin;
+          break;
+      }
+      const pnObj: TextObject = {
+        id: `pagenumber-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${i}`,
+        pageId: page.id,
+        type: 'text',
+        text: displayText,
+        fontSize: config.fontSize,
+        fontFamily: 'Helvetica',
+        color: config.color,
+        isBold: false,
+        isItalic: false,
+        align: 'center',
+        x,
+        y,
+        width: textW,
+        height: textH,
+        opacity: 1,
+      };
+      nextObjects[page.id] = [...(nextObjects[page.id] || []), pnObj];
+    }
+    setObjectsByPage(nextObjects);
+    commitSnapshot(documentState.pages, nextObjects);
+    addToast('success', `Page numbers added to ${totalPages} page(s)`);
+  }, [documentState.pages, objectsByPage, commitSnapshot, addToast]);
+
   // Duplicate Object handler
   const handleDuplicateObject = useCallback((id: string) => {
     if (!currentPage) return;
@@ -720,6 +824,8 @@ export function App() {
           onImageUploadClick={handleImageUploadClick}
           onOpenSignatureDialog={() => setIsSignatureOpen(true)}
           onOpenStampDialog={() => setIsStampOpen(true)}
+          onOpenWatermarkDialog={() => setIsWatermarkOpen(true)}
+          onOpenPageNumberDialog={() => setIsPageNumberOpen(true)}
           onOpenOrganizePages={() => setIsOrganizePagesOpen(true)}
           theme={theme}
           onToggleTheme={toggleTheme}
@@ -805,6 +911,19 @@ export function App() {
         status={exportState.status}
         errorMessage={exportState.errorMessage}
         onClose={() => setExportState((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      <WatermarkDialog
+        isOpen={isWatermarkOpen}
+        onCancel={() => setIsWatermarkOpen(false)}
+        onApply={handleApplyWatermark}
+      />
+
+      <PageNumberDialog
+        isOpen={isPageNumberOpen}
+        totalPages={documentState.pages.length || 1}
+        onCancel={() => setIsPageNumberOpen(false)}
+        onApply={handleApplyPageNumbers}
       />
 
       {/* Non-intrusive Toasts */}

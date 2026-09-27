@@ -119,8 +119,29 @@ export const PropertyBar: React.FC<PropertyBarProps> = ({
 
   return (
     <div className="property-bar">
-      {/* TEXT PROPERTIES */}
-      {effectiveType === 'text' && (
+      {/* EDIT TEXT MODE NOTICE */}
+      {effectiveType === 'editText' && (
+        <div className="prop-group" style={{ marginRight: 12 }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '3px 10px',
+              background: 'rgba(99, 102, 241, 0.12)',
+              color: 'var(--accent-primary, #6366f1)',
+              borderRadius: '9999px',
+              fontSize: '11px',
+              fontWeight: 600,
+            }}
+          >
+            ✏️ Click any text on the page to modify
+          </span>
+        </div>
+      )}
+
+      {/* TEXT & EDIT-TEXT PROPERTIES */}
+      {(effectiveType === 'text' || effectiveType === 'editText') && (
         <>
           <div className="prop-group">
             <span className="prop-label">Font:</span>
@@ -310,6 +331,44 @@ export const PropertyBar: React.FC<PropertyBarProps> = ({
             </select>
           </div>
         </>
+      )}
+
+      {/* ERASER / WHITEOUT / REDACT PROPERTIES */}
+      {(effectiveType === 'eraser' || effectiveType === 'whiteout') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="prop-group">
+            <span className="prop-label">Mode:</span>
+            <button
+              type="button"
+              className={`prop-toggle-btn ${(properties.whiteoutColor || '#ffffff') === '#ffffff' ? 'active' : ''}`}
+              onClick={() => {
+                onChangeProperties({ whiteoutColor: '#ffffff' });
+                if (selectedObject && selectedObject.type === 'whiteout' && onUpdateSelectedObject) {
+                  onUpdateSelectedObject({ color: '#ffffff' });
+                }
+              }}
+              title="Whiteout (Mask with White)"
+            >
+              ⬜ Whiteout
+            </button>
+            <button
+              type="button"
+              className={`prop-toggle-btn ${properties.whiteoutColor === '#000000' ? 'active' : ''}`}
+              onClick={() => {
+                onChangeProperties({ whiteoutColor: '#000000' });
+                if (selectedObject && selectedObject.type === 'whiteout' && onUpdateSelectedObject) {
+                  onUpdateSelectedObject({ color: '#000000' });
+                }
+              }}
+              title="Redaction (Blackout Sensitive Data)"
+            >
+              ⬛ Redact
+            </button>
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+            Drag a rectangle over text or areas to erase or redact.
+          </span>
+        </div>
       )}
     </div>
   );

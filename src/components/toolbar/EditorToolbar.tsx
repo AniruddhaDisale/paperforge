@@ -3,6 +3,8 @@ import {
   Upload,
   MousePointer,
   Type,
+  Droplet,
+  Hash,
   Pen,
   Highlighter,
   Image as ImageIcon,
@@ -17,6 +19,8 @@ import {
   Check,
   X as CrossIcon,
   CircleDot,
+  FileEdit,
+  Eraser,
 } from 'lucide-react';
 import type { ToolType, ShapeType, FormMarkType } from '../../types/editor';
 
@@ -30,6 +34,8 @@ interface EditorToolbarProps {
   onSelectMarkType: (mark: FormMarkType) => void;
   onOpenSignatureDialog: () => void;
   onOpenStampDialog: () => void;
+  onOpenWatermarkDialog: () => void;
+  onOpenPageNumberDialog: () => void;
   onUploadClick: () => void;
   onImageUploadClick: () => void;
   onDeleteSelected: () => void;
@@ -46,6 +52,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onSelectMarkType,
   onOpenSignatureDialog,
   onOpenStampDialog,
+  onOpenWatermarkDialog,
+  onOpenPageNumberDialog,
   onUploadClick,
   onImageUploadClick,
   onDeleteSelected,
@@ -106,13 +114,33 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       </button>
 
       <button
+        className={`tool-item tool-highlight-glow ${activeTool === 'editText' ? 'active' : ''}`}
+        onClick={() => onSelectTool('editText')}
+        disabled={disabled}
+        title="Edit PDF Text - Click existing text on the document to edit"
+      >
+        <FileEdit size={16} />
+        <span>Edit PDF Text</span>
+      </button>
+
+      <button
         className={`tool-item ${activeTool === 'text' ? 'active' : ''}`}
         onClick={() => onSelectTool('text')}
         disabled={disabled}
-        title="Add Text (T)"
+        title="Add New Text (T)"
       >
         <Type size={16} />
-        <span>Text</span>
+        <span>Add Text</span>
+      </button>
+
+      <button
+        className={`tool-item ${activeTool === 'eraser' ? 'active' : ''}`}
+        onClick={() => onSelectTool('eraser')}
+        disabled={disabled}
+        title="Whiteout & Redact (Eraser) - Drag over text or areas to erase or redact"
+      >
+        <Eraser size={16} />
+        <span>Eraser</span>
       </button>
 
       <button
@@ -236,6 +264,28 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       >
         <StampIcon size={16} />
         <span>Stamp</span>
+      </button>
+
+      {/* Watermark */}
+      <button
+        className="tool-item"
+        onClick={onOpenWatermarkDialog}
+        disabled={disabled}
+        title="Add Watermark (e.g. CONFIDENTIAL, DRAFT)"
+      >
+        <Droplet size={16} />
+        <span>Watermark</span>
+      </button>
+
+      {/* Page Numbers */}
+      <button
+        className="tool-item"
+        onClick={onOpenPageNumberDialog}
+        disabled={disabled}
+        title="Add Page Numbers to Document"
+      >
+        <Hash size={16} />
+        <span>Page #</span>
       </button>
 
       {/* Quick Form Marks */}
