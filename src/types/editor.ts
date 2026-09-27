@@ -1,6 +1,17 @@
-export type ToolType = 'select' | 'text' | 'draw' | 'highlight' | 'shape' | 'image';
+export type ToolType =
+  | 'select'
+  | 'text'
+  | 'draw'
+  | 'highlight'
+  | 'shape'
+  | 'image'
+  | 'signature'
+  | 'stamp'
+  | 'mark';
 
 export type ShapeType = 'rectangle' | 'circle' | 'line' | 'arrow';
+
+export type FormMarkType = 'check' | 'cross' | 'dot';
 
 export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 
@@ -11,6 +22,7 @@ export interface BaseEditorObject {
   y: number; // PDF points (unscaled), top-left
   width: number; // PDF points
   height: number; // PDF points
+  opacity?: number;
 }
 
 export interface TextObject extends BaseEditorObject {
@@ -60,12 +72,37 @@ export interface ImageObject extends BaseEditorObject {
   opacity: number;
 }
 
+export interface SignatureObject extends BaseEditorObject {
+  type: 'signature';
+  src: string; // Data URL (PNG)
+  opacity: number;
+}
+
+export interface StampObject extends BaseEditorObject {
+  type: 'stamp';
+  label: string;
+  color: string;
+  timestamp?: string;
+  opacity: number;
+}
+
+export interface FormMarkObject extends BaseEditorObject {
+  type: 'mark';
+  markType: FormMarkType;
+  color: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
 export type EditorObject =
   | TextObject
   | DrawObject
   | HighlightObject
   | ShapeObject
-  | ImageObject;
+  | ImageObject
+  | SignatureObject
+  | StampObject
+  | FormMarkObject;
 
 export interface ToolProperties {
   textColor: string;
@@ -84,6 +121,8 @@ export interface ToolProperties {
   shapeFillColor: string;
   shapeStrokeWidth: number;
   shapeOpacity: number;
+  markType: FormMarkType;
+  markColor: string;
 }
 
 export interface HistorySnapshot {

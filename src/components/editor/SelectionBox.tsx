@@ -1,12 +1,18 @@
 import React from 'react';
-import { Trash2 } from 'lucide-react';
-import type { ResizeHandle, BaseEditorObject } from '../../types/editor';
+import type { ResizeHandle, EditorObject } from '../../types/editor';
+import { FloatingToolbar } from './FloatingToolbar';
 
 interface SelectionBoxProps {
-  object: BaseEditorObject;
+  object: EditorObject;
   zoom: number;
   onStartResize: (handle: ResizeHandle, e: React.PointerEvent) => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
+  onBringToFront?: () => void;
+  onSendToBack?: () => void;
+  onBringForward?: () => void;
+  onSendBackward?: () => void;
+  onChangeOpacity?: (opacity: number) => void;
   allowResize?: boolean;
 }
 
@@ -17,6 +23,12 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
   zoom,
   onStartResize,
   onDelete,
+  onDuplicate,
+  onBringToFront,
+  onSendToBack,
+  onBringForward,
+  onSendBackward,
+  onChangeOpacity,
   allowResize = true,
 }) => {
   const left = object.x * zoom;
@@ -34,17 +46,20 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
         height,
       }}
     >
-      <div className="selection-actions-bar" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="selection-action-btn delete"
-          onClick={onDelete}
-          title="Delete (Backspace)"
-          aria-label="Delete"
-        >
-          <Trash2 size={13} />
-        </button>
-      </div>
+      {/* Canva-style floating contextual toolbar */}
+      {onDuplicate && onBringToFront && onSendToBack && onBringForward && onSendBackward && onChangeOpacity && (
+        <FloatingToolbar
+          object={object}
+          zoom={zoom}
+          onDuplicate={onDuplicate}
+          onBringToFront={onBringToFront}
+          onSendToBack={onSendToBack}
+          onBringForward={onBringForward}
+          onSendBackward={onSendBackward}
+          onChangeOpacity={onChangeOpacity}
+          onDelete={onDelete}
+        />
+      )}
 
       {allowResize &&
         HANDLES.map((handle) => (
@@ -60,3 +75,4 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
     </div>
   );
 };
+

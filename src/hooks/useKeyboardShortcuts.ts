@@ -4,6 +4,7 @@ interface KeyboardShortcutsOptions {
   onUndo: () => void;
   onRedo: () => void;
   onDeleteSelected: () => void;
+  onDuplicate?: () => void;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onEscape: () => void;
@@ -19,6 +20,7 @@ export function useKeyboardShortcuts({
   onUndo,
   onRedo,
   onDeleteSelected,
+  onDuplicate,
   onNextPage,
   onPreviousPage,
   onEscape,
@@ -51,6 +53,13 @@ export function useKeyboardShortcuts({
       if ((modifier && e.key.toLowerCase() === 'y') || (modifier && e.shiftKey && e.key.toLowerCase() === 'z')) {
         e.preventDefault();
         if (canRedo) onRedo();
+        return;
+      }
+
+      // Duplicate: Ctrl+D or Cmd+D
+      if (modifier && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        if (hasSelectedObject && onDuplicate) onDuplicate();
         return;
       }
 
@@ -106,6 +115,7 @@ export function useKeyboardShortcuts({
     onUndo,
     onRedo,
     onDeleteSelected,
+    onDuplicate,
     onNextPage,
     onPreviousPage,
     onEscape,

@@ -29,10 +29,17 @@ interface WorkspaceProps {
   onAddObject: (obj: EditorObject) => void;
   onUpdateObject: (id: string, updates: Partial<EditorObject>) => void;
   onDeleteSelected: () => void;
+  onDuplicateObject?: (id: string) => void;
+  onReorderObject?: (id: string, action: 'front' | 'back' | 'forward' | 'backward') => void;
   onCommitOperation: () => void;
   onUploadClick: () => void;
   onLoadSample?: () => void;
   onImageUploadClick: () => void;
+  onOpenSignatureDialog: () => void;
+  onOpenStampDialog: () => void;
+  onOpenOrganizePages?: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
   onPreviousPage: () => void;
   onNextPage: () => void;
   onZoomIn: () => void;
@@ -62,10 +69,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   onAddObject,
   onUpdateObject,
   onDeleteSelected,
+  onDuplicateObject,
+  onReorderObject,
   onCommitOperation,
   onUploadClick,
   onLoadSample,
   onImageUploadClick,
+  onOpenSignatureDialog,
+  onOpenStampDialog,
+  onOpenOrganizePages,
+  theme,
+  onToggleTheme,
   onPreviousPage,
   onNextPage,
   onZoomIn,
@@ -83,9 +97,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         <EditorToolbar
           activeTool={activeTool}
           selectedShapeType={selectedShapeType}
+          selectedMarkType={properties.markType || 'check'}
           hasSelectedObject={Boolean(selectedObjectId)}
           onSelectTool={onSelectTool}
           onSelectShapeType={onSelectShapeType}
+          onSelectMarkType={(m) => onChangeProperties({ markType: m })}
+          onOpenSignatureDialog={onOpenSignatureDialog}
+          onOpenStampDialog={onOpenStampDialog}
           onUploadClick={onUploadClick}
           onImageUploadClick={onImageUploadClick}
           onDeleteSelected={onDeleteSelected}
@@ -124,7 +142,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
 
             <h2 className="empty-state-title">Open a PDF to get started</h2>
             <p className="empty-state-desc">
-              Upload a PDF document to annotate with text, freehand drawing, highlights, shapes, and images.
+              Upload a PDF document to annotate with text, freehand drawing, highlights, shapes, images, signatures, and stamps.
             </p>
 
             <div className="empty-state-actions">
@@ -168,6 +186,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             onDeleteObject={() => {
               if (selectedObjectId) onDeleteSelected();
             }}
+            onDuplicateObject={onDuplicateObject}
+            onReorderObject={onReorderObject}
             onCommitOperation={onCommitOperation}
           />
         )}
@@ -192,6 +212,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         onZoomOut={onZoomOut}
         onResetZoom={onResetZoom}
         onFitWidth={onFitWidth}
+        onOpenOrganizePages={onOpenOrganizePages}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
         disabled={!currentPage}
       />
     </section>

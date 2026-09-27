@@ -12,15 +12,24 @@ import {
   MoveRight,
   Trash2,
   ChevronDown,
+  PenLine,
+  Stamp as StampIcon,
+  Check,
+  X as CrossIcon,
+  CircleDot,
 } from 'lucide-react';
-import type { ToolType, ShapeType } from '../../types/editor';
+import type { ToolType, ShapeType, FormMarkType } from '../../types/editor';
 
 interface EditorToolbarProps {
   activeTool: ToolType;
   selectedShapeType: ShapeType;
+  selectedMarkType: FormMarkType;
   hasSelectedObject: boolean;
   onSelectTool: (tool: ToolType) => void;
   onSelectShapeType: (shape: ShapeType) => void;
+  onSelectMarkType: (mark: FormMarkType) => void;
+  onOpenSignatureDialog: () => void;
+  onOpenStampDialog: () => void;
   onUploadClick: () => void;
   onImageUploadClick: () => void;
   onDeleteSelected: () => void;
@@ -30,28 +39,37 @@ interface EditorToolbarProps {
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   activeTool,
   selectedShapeType,
+  selectedMarkType,
   hasSelectedObject,
   onSelectTool,
   onSelectShapeType,
+  onSelectMarkType,
+  onOpenSignatureDialog,
+  onOpenStampDialog,
   onUploadClick,
   onImageUploadClick,
   onDeleteSelected,
   disabled = false,
 }) => {
   const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
+  const [markMenuOpen, setMarkMenuOpen] = useState(false);
   const shapeMenuRef = useRef<HTMLDivElement>(null);
+  const markMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (shapeMenuRef.current && !shapeMenuRef.current.contains(e.target as Node)) {
         setShapeMenuOpen(false);
       }
+      if (markMenuRef.current && !markMenuRef.current.contains(e.target as Node)) {
+        setMarkMenuOpen(false);
+      }
     };
-    if (shapeMenuOpen) {
+    if (shapeMenuOpen || markMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [shapeMenuOpen]);
+  }, [shapeMenuOpen, markMenuOpen]);
 
   const renderShapeIcon = (type: ShapeType) => {
     switch (type) {
@@ -191,6 +209,91 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             >
               <MoveRight size={15} />
               <span>Arrow</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="v-divider" />
+
+      {/* Digital Signature */}
+      <button
+        className="tool-item"
+        onClick={onOpenSignatureDialog}
+        disabled={disabled}
+        title="Add Digital Signature"
+      >
+        <PenLine size={16} />
+        <span>Sign</span>
+      </button>
+
+      {/* Business Stamp */}
+      <button
+        className="tool-item"
+        onClick={onOpenStampDialog}
+        disabled={disabled}
+        title="Add Business Stamp"
+      >
+        <StampIcon size={16} />
+        <span>Stamp</span>
+      </button>
+
+      {/* Quick Form Marks */}
+      <div ref={markMenuRef} style={{ position: 'relative' }}>
+        <button
+          className={`tool-item ${activeTool === 'mark' ? 'active' : ''}`}
+          onClick={() => {
+            onSelectTool('mark');
+            setMarkMenuOpen(!markMenuOpen);
+          }}
+          disabled={disabled}
+          title="Form Filler Marks (Check, Cross, Dot)"
+        >
+          {selectedMarkType === 'cross' ? (
+            <CrossIcon size={16} />
+          ) : selectedMarkType === 'dot' ? (
+            <CircleDot size={16} />
+          ) : (
+            <Check size={16} />
+          )}
+          <span>Mark</span>
+          <ChevronDown size={13} style={{ marginLeft: -2 }} />
+        </button>
+
+        {markMenuOpen && (
+          <div className="shape-menu-popover">
+            <button
+              className={`shape-menu-item ${selectedMarkType === 'check' ? 'active' : ''}`}
+              onClick={() => {
+                onSelectMarkType('check');
+                onSelectTool('mark');
+                setMarkMenuOpen(false);
+              }}
+            >
+              <Check size={15} />
+              <span>Checkmark (✓)</span>
+            </button>
+            <button
+              className={`shape-menu-item ${selectedMarkType === 'cross' ? 'active' : ''}`}
+              onClick={() => {
+                onSelectMarkType('cross');
+                onSelectTool('mark');
+                setMarkMenuOpen(false);
+              }}
+            >
+              <CrossIcon size={15} />
+              <span>Crossmark (✗)</span>
+            </button>
+            <button
+              className={`shape-menu-item ${selectedMarkType === 'dot' ? 'active' : ''}`}
+              onClick={() => {
+                onSelectMarkType('dot');
+                onSelectTool('mark');
+                setMarkMenuOpen(false);
+              }}
+            >
+              <CircleDot size={15} />
+              <span>Dot Bullet (•)</span>
             </button>
           </div>
         )}

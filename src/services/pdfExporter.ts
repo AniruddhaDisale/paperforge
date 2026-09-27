@@ -14,6 +14,9 @@ import type {
   HighlightObject,
   ShapeObject,
   ImageObject,
+  SignatureObject,
+  StampObject,
+  FormMarkObject,
 } from '../types/editor';
 
 /**
@@ -119,6 +122,15 @@ export async function exportPdfDocument(
             break;
           case 'image':
             await drawImageOnPage(destPdf, destPage, obj, pageWidth, pageHeight, rotation);
+            break;
+          case 'signature':
+            await drawSignatureOnPage(destPdf, destPage, obj, pageWidth, pageHeight, rotation);
+            break;
+          case 'stamp':
+            drawStampOnPage(destPage, obj, fonts, pageWidth, pageHeight, rotation);
+            break;
+          case 'mark':
+            drawFormMarkOnPage(destPage, obj, pageWidth, pageHeight, rotation);
             break;
         }
       } catch (err) {
@@ -341,3 +353,143 @@ async function drawImageOnPage(
     opacity: obj.opacity ?? 1,
   });
 }
+
+async function drawSignatureOnPage(
+  pdfDoc: PDFDocument,
+  page: PDFPage,
+  obj: SignatureObject,
+  pageWidth: number,
+  pageHeight: number,
+  rotation: number
+) {
+  let embeddedImage;
+
+  if (obj.src.startsWith('data:image/png;base64,')) {
+    const base64Data = obj.src.replace('data:image/png;base64,', '');
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    embeddedImage = await pdfDoc.embedPng(bytes);
+  } else {
+    const response = await fetch(obj.src);
+    const arrayBuffer = await response.arrayBuffer();
+    embeddedImage = await pdfDoc.embedPng(new Uint8Array(arrayBuffer));
+  }
+
+  const pt = visualToPdfPoint(obj.x, obj.y + obj.height, pageWidth, pageHeight, rotation);
+
+  page.drawImage(embeddedImage, {
+    x: pt.x,
+    y: pt.y,
+    width: obj.width,
+    height: obj.height,
+    opacity: obj.opacity ?? 1,
+  });
+}
+
+function drawStampOnPage(
+  page: PDFPage,
+  obj: StampObject,
+  fonts: Record<string, PDFFont>,
+  pageWidth: number,
+  pageHeight: number,
+  rotation: number
+) {
+  const color = hexToRgbColor(obj.color);
+  const opacity = obj.opacity ?? 1;
+  const pt = visualToPdfPoint(obj.x, obj.y + obj.height, pageWidth, pageHeight, rotation);
+
+  // Background tint
+  page.drawRectangle({
+    x: pt.x,
+    y: pt.y,
+    width: obj.width,
+    height: obj.height,
+    color,
+    opacity: opacity * 0.1,
+  });
+
+  // Border rectangle
+  page.drawRectangle({
+    x: pt.x,
+    y: pt.y,
+    width: obj.width,
+    height: obj.height,
+    borderColor: color,
+    borderWidth: 2,
+    opacity,
+  });
+
+  const fontBold = fonts.HelveticaBold;
+  const fontRegular = fonts.Helvetica;
+  const labelFontSize = obj.timestamp ? Math.max(9, obj.height * 0.36) : Math.max(10, obj.height * 0.48);
+  const labelWidth = fontBold.widthOfTextAtSize(obj.label, labelFontSize);
+  const labelX = pt.x + (obj.width - labelWidth) / 2;
+  const labelY = obj.timestamp ? pt.y + obj.height * 0.45 : pt.y + (obj.height - labelFontSize) / 2;
+
+  page.drawText(obj.label, {
+    x: Math.max(pt.x + 2, labelX),
+    y: labelY,
+    size: labelFontSize,
+    font: fontBold,
+    color,
+    opacity,
+  });
+
+  if (obj.timestamp) {
+    const tsFontSize = Math.max(7, obj.height * 0.22);
+    const tsWidth = fontRegular.widthOfTextAtSize(obj.timestamp, tsFontSize);
+    const tsX = pt.x + (obj.width - tsWidth) / 2;
+    const tsY = pt.y + obj.height * 0.16;
+
+    page.drawText(obj.timestamp, {
+      x: Math.max(pt.x + 2, tsX),
+      y: tsY,
+      size: tsFontSize,
+      font: fontRegular,
+      color,
+      opacity: opacity * 0.85,
+    });
+  }
+}
+
+function drawFormMarkOnPage(
+  page: PDFPage,
+  obj: FormMarkObject,
+  pageWidth: number,
+  pageHeight: number,
+  rotation: number
+) {
+  const color = hexToRgbColor(obj.color);
+  const opacity = obj.opacity ?? 1;
+  const thickness = obj.strokeWidth || 2.5;
+
+  if (obj.markType === 'check') {
+    const p1 = visualToPdfPoint(obj.x + obj.width * 0.15, obj.y + obj.height * 0.55, pageWidth, pageHeight, rotation);
+    const p2 = visualToPdfPoint(obj.x + obj.width * 0.40, obj.y + obj.height * 0.85, pageWidth, pageHeight, rotation);
+    const p3 = visualToPdfPoint(obj.x + obj.width * 0.85, obj.y + obj.height * 0.18, pageWidth, pageHeight, rotation);
+
+    page.drawLine({ start: p1, end: p2, thickness, color, opacity });
+    page.drawLine({ start: p2, end: p3, thickness, color, opacity });
+  } else if (obj.markType === 'cross') {
+    const p1a = visualToPdfPoint(obj.x + obj.width * 0.2, obj.y + obj.height * 0.2, pageWidth, pageHeight, rotation);
+    const p1b = visualToPdfPoint(obj.x + obj.width * 0.8, obj.y + obj.height * 0.8, pageWidth, pageHeight, rotation);
+    const p2a = visualToPdfPoint(obj.x + obj.width * 0.8, obj.y + obj.height * 0.2, pageWidth, pageHeight, rotation);
+    const p2b = visualToPdfPoint(obj.x + obj.width * 0.2, obj.y + obj.height * 0.8, pageWidth, pageHeight, rotation);
+
+    page.drawLine({ start: p1a, end: p1b, thickness, color, opacity });
+    page.drawLine({ start: p2a, end: p2b, thickness, color, opacity });
+  } else if (obj.markType === 'dot') {
+    const centerPt = visualToPdfPoint(obj.x + obj.width / 2, obj.y + obj.height / 2, pageWidth, pageHeight, rotation);
+    page.drawCircle({
+      x: centerPt.x,
+      y: centerPt.y,
+      size: obj.width * 0.35,
+      color,
+      opacity,
+    });
+  }
+}
+

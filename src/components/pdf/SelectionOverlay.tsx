@@ -10,6 +10,9 @@ import type {
   HighlightObject,
   ShapeObject,
   ImageObject,
+  SignatureObject,
+  StampObject,
+  FormMarkObject,
 } from '../../types/editor';
 import { screenToPdf, normalizeRect } from '../../utils/coordinates';
 import { getBoundingBox, applyResize, pointsToSvgPath } from '../../utils/geometry';
@@ -19,6 +22,9 @@ import { DrawingLayer } from '../editor/DrawingLayer';
 import { HighlightAnnotation } from '../editor/HighlightAnnotation';
 import { ShapeAnnotation } from '../editor/ShapeAnnotation';
 import { ImageAnnotation } from '../editor/ImageAnnotation';
+import { SignatureAnnotation } from '../editor/SignatureAnnotation';
+import { StampAnnotation } from '../editor/StampAnnotation';
+import { FormMarkAnnotation } from '../editor/FormMarkAnnotation';
 
 interface SelectionOverlayProps {
   pageId: string;
@@ -33,6 +39,8 @@ interface SelectionOverlayProps {
   onAddObject: (obj: EditorObject) => void;
   onUpdateObject: (id: string, updates: Partial<EditorObject>) => void;
   onDeleteObject: (id: string) => void;
+  onDuplicateObject?: (id: string) => void;
+  onReorderObject?: (id: string, action: 'front' | 'back' | 'forward' | 'backward') => void;
   onCommitOperation?: () => void;
 }
 
@@ -49,6 +57,8 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
   onAddObject,
   onUpdateObject,
   onDeleteObject,
+  onDuplicateObject,
+  onReorderObject,
   onCommitOperation,
 }) => {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -110,6 +120,27 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
         e.preventDefault();
         overlayRef.current.setPointerCapture(e.pointerId);
         setActiveStroke([pdfPt]);
+        return;
+      }
+
+      if (activeTool === 'mark') {
+        e.preventDefault();
+        const markSize = 26;
+        const newMark: FormMarkObject = {
+          id: `mark-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          pageId,
+          type: 'mark',
+          markType: properties.markType || 'check',
+          x: pdfPt.x - markSize / 2,
+          y: pdfPt.y - markSize / 2,
+          width: markSize,
+          height: markSize,
+          color: properties.markColor || '#2563eb',
+          strokeWidth: 2.5,
+          opacity: 1,
+        };
+        onAddObject(newMark);
+        onSelectObject(newMark.id);
         return;
       }
 
@@ -480,6 +511,45 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
           />
         ))}
 
+      {objects
+        .filter((o): o is SignatureObject => o.type === 'signature')
+        .map((sig) => (
+          <SignatureAnnotation
+            key={sig.id}
+            object={sig}
+            zoom={zoom}
+            isSelected={sig.id === selectedObjectId}
+            onSelect={() => onSelectObject(sig.id)}
+            onStartMove={(e) => startMoveObject(sig, e)}
+          />
+        ))}
+
+      {objects
+        .filter((o): o is StampObject => o.type === 'stamp')
+        .map((st) => (
+          <StampAnnotation
+            key={st.id}
+            object={st}
+            zoom={zoom}
+            isSelected={st.id === selectedObjectId}
+            onSelect={() => onSelectObject(st.id)}
+            onStartMove={(e) => startMoveObject(st, e)}
+          />
+        ))}
+
+      {objects
+        .filter((o): o is FormMarkObject => o.type === 'mark')
+        .map((mk) => (
+          <FormMarkAnnotation
+            key={mk.id}
+            object={mk}
+            zoom={zoom}
+            isSelected={mk.id === selectedObjectId}
+            onSelect={() => onSelectObject(mk.id)}
+            onStartMove={(e) => startMoveObject(mk, e)}
+          />
+        ))}
+
       {/* Active Highlight Drag Preview */}
       {activeTool === 'highlight' && dragRect && (
         <div
@@ -497,13 +567,19 @@ export const SelectionOverlay: React.FC<SelectionOverlayProps> = ({
         />
       )}
 
-      {/* Selection Box with Resize Handles and Quick Delete */}
+      {/* Selection Box with Resize Handles and Canva Floating Action Bar */}
       {selectedObject && (
         <SelectionBox
           object={selectedObject}
           zoom={zoom}
           onStartResize={startResizeObject}
           onDelete={() => onDeleteObject(selectedObject.id)}
+          onDuplicate={() => onDuplicateObject?.(selectedObject.id)}
+          onBringToFront={() => onReorderObject?.(selectedObject.id, 'front')}
+          onSendToBack={() => onReorderObject?.(selectedObject.id, 'back')}
+          onBringForward={() => onReorderObject?.(selectedObject.id, 'forward')}
+          onSendBackward={() => onReorderObject?.(selectedObject.id, 'backward')}
+          onChangeOpacity={(opacity) => onUpdateObject(selectedObject.id, { opacity })}
           allowResize={selectedObject.type !== 'draw'}
         />
       )}

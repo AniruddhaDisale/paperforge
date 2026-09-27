@@ -1,5 +1,13 @@
-import React, { useState, useRef, useCallback } from 'react';
-import type { ToolType, ShapeType, ToolProperties, EditorObject, ImageObject } from './types/editor';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import type {
+  ToolType,
+  ShapeType,
+  ToolProperties,
+  EditorObject,
+  ImageObject,
+  SignatureObject,
+  StampObject,
+} from './types/editor';
 import type { PageSize } from './types/pdf';
 import { usePdfDocument } from './hooks/usePdfDocument';
 import { useEditorHistory } from './hooks/useEditorHistory';
@@ -13,8 +21,17 @@ import { PasswordDialog } from './components/dialogs/PasswordDialog';
 import { AddPageDialog } from './components/dialogs/AddPageDialog';
 import { ShortcutsDialog } from './components/dialogs/ShortcutsDialog';
 import { ExportDialog } from './components/dialogs/ExportDialog';
+import { SignatureDialog } from './components/dialogs/SignatureDialog';
+import { StampDialog } from './components/dialogs/StampDialog';
+import { OrganizePagesDialog } from './components/dialogs/OrganizePagesDialog';
+import { DocumentInfoDialog } from './components/dialogs/DocumentInfoDialog';
 import { Toast, type ToastItem } from './components/common/Toast';
-import { normalizeImageToPng, triggerFileDownload, getExportFileName } from './utils/fileUtils';
+import {
+  normalizeImageToPng,
+  triggerFileDownload,
+  getExportFileName,
+  exportCurrentPageAsImage,
+} from './utils/fileUtils';
 import { exportPdfDocument } from './services/pdfExporter';
 
 const INITIAL_PROPERTIES: ToolProperties = {
@@ -34,6 +51,8 @@ const INITIAL_PROPERTIES: ToolProperties = {
   shapeFillColor: 'transparent',
   shapeStrokeWidth: 2,
   shapeOpacity: 1,
+  markType: 'check',
+  markColor: '#2563eb',
 };
 
 export function App() {
@@ -76,6 +95,33 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isAddPageOpen, setIsAddPageOpen] = useState(false);
+  const [isSignatureOpen, setIsSignatureOpen] = useState(false);
+  const [isStampOpen, setIsStampOpen] = useState(false);
+  const [isOrganizePagesOpen, setIsOrganizePagesOpen] = useState(false);
+  const [isDocumentInfoOpen, setIsDocumentInfoOpen] = useState(false);
+
+  // Dark Mode Theme State
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return (localStorage.getItem('paperforge_theme') as 'light' | 'dark') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('paperforge_theme', theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
     title: string;
@@ -363,6 +409,163 @@ export function App() {
     addToast('success', 'Blank page added');
   };
 
+  // Insert Signature handler
+  const handleInsertSignature = useCallback((dataUrl: string) => {
+    if (!currentPage) return;
+    const sigW = 180;
+    const sigH = 64;
+    const x = Math.max(20, Math.round((currentPage.width - sigW) / 2));
+    const y = Math.max(20, Math.round((currentPage.height - sigH) / 2));
+
+    const newSig: SignatureObject = {
+      id: `sig-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      pageId: currentPage.id,
+      type: 'signature',
+      src: dataUrl,
+      x,
+      y,
+      width: sigW,
+      height: sigH,
+      opacity: 1,
+    };
+    handleAddObject(newSig);
+    setSelectedObjectId(newSig.id);
+    setActiveTool('select');
+    addToast('success', 'Digital signature placed on document');
+  }, [currentPage, handleAddObject, addToast]);
+
+  // Insert Stamp handler
+  const handleInsertStamp = useCallback((stamp: { label: string; color: string; timestamp?: string }) => {
+    if (!currentPage) return;
+    const stW = 150;
+    const stH = 50;
+    const x = Math.max(20, Math.round((currentPage.width - stW) / 2));
+    const y = Math.max(20, Math.round((currentPage.height - stH) / 2));
+
+    const newStamp: StampObject = {
+      id: `stamp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      pageId: currentPage.id,
+      type: 'stamp',
+      label: stamp.label,
+      color: stamp.color,
+      timestamp: stamp.timestamp,
+      x,
+      y,
+      width: stW,
+      height: stH,
+      opacity: 1,
+    };
+    handleAddObject(newStamp);
+    setSelectedObjectId(newStamp.id);
+    setActiveTool('select');
+    addToast('success', `Stamp "${stamp.label}" placed on document`);
+  }, [currentPage, handleAddObject, addToast]);
+
+  // Duplicate Object handler
+  const handleDuplicateObject = useCallback((id: string) => {
+    if (!currentPage) return;
+    const currentObjs = objectsByPage[currentPage.id] || [];
+    const target = currentObjs.find((o) => o.id === id);
+    if (!target) return;
+
+    const cloned: EditorObject = {
+      ...target,
+      id: `${target.type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      x: target.x + 20,
+      y: target.y + 20,
+    };
+    const updated = [...currentObjs, cloned];
+    const nextObjects = { ...objectsByPage, [currentPage.id]: updated };
+    setObjectsByPage(nextObjects);
+    setSelectedObjectId(cloned.id);
+    commitSnapshot(documentState.pages, nextObjects);
+    addToast('info', 'Element duplicated');
+  }, [currentPage, objectsByPage, documentState.pages, commitSnapshot, addToast]);
+
+  // Reorder layer position handler
+  const handleReorderObject = useCallback((id: string, action: 'front' | 'back' | 'forward' | 'backward') => {
+    if (!currentPage) return;
+    const currentObjs = objectsByPage[currentPage.id] || [];
+    const index = currentObjs.findIndex((o) => o.id === id);
+    if (index === -1) return;
+
+    const newObjs = [...currentObjs];
+    const [item] = newObjs.splice(index, 1);
+
+    if (action === 'front') {
+      newObjs.push(item);
+    } else if (action === 'back') {
+      newObjs.unshift(item);
+    } else if (action === 'forward') {
+      const newIndex = Math.min(newObjs.length, index + 1);
+      newObjs.splice(newIndex, 0, item);
+    } else if (action === 'backward') {
+      const newIndex = Math.max(0, index - 1);
+      newObjs.splice(newIndex, 0, item);
+    }
+
+    const nextObjects = { ...objectsByPage, [currentPage.id]: newObjs };
+    setObjectsByPage(nextObjects);
+    commitSnapshot(documentState.pages, nextObjects);
+  }, [currentPage, objectsByPage, documentState.pages, commitSnapshot]);
+
+  // Rotate all pages handler
+  const handleRotateAllPages = useCallback((delta: 90 | -90) => {
+    const updatedPages = documentState.pages.map((page) => {
+      const newRotation = (((page.rotation + delta) % 360) + 360) % 360;
+      return { ...page, rotation: newRotation as 0 | 90 | 180 | 270, width: page.height, height: page.width };
+    });
+    setDocumentPages(updatedPages);
+    markModified();
+    commitSnapshot(updatedPages, objectsByPage);
+    addToast('info', `Rotated all pages ${delta > 0 ? '90°' : '-90°'}`);
+  }, [documentState.pages, objectsByPage, setDocumentPages, markModified, commitSnapshot, addToast]);
+
+  // Duplicate page handler
+  const handleDuplicatePage = useCallback((pageId: string) => {
+    const index = documentState.pages.findIndex((p) => p.id === pageId);
+    if (index === -1) return;
+    const target = documentState.pages[index];
+    const newPageId = `page-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newPage = {
+      ...target,
+      id: newPageId,
+    };
+    const updated = [...documentState.pages];
+    updated.splice(index + 1, 0, newPage);
+    setDocumentPages(updated);
+    setCurrentPageId(newPageId);
+
+    // Clone annotations if existing
+    const nextObjects = { ...objectsByPage };
+    if (objectsByPage[pageId]) {
+      nextObjects[newPageId] = objectsByPage[pageId].map((o) => ({
+        ...o,
+        id: `${o.type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        pageId: newPageId,
+      }));
+      setObjectsByPage(nextObjects);
+    }
+
+    markModified();
+    commitSnapshot(updated, nextObjects);
+    addToast('success', `Page ${index + 1} duplicated`);
+  }, [documentState.pages, objectsByPage, setDocumentPages, setCurrentPageId, markModified, commitSnapshot, addToast]);
+
+  // Export current page as PNG image
+  const handleExportPageAsImage = useCallback(async () => {
+    if (!currentPage) return;
+    const success = await exportCurrentPageAsImage(
+      currentPageNumber,
+      documentState.originalFileName || 'document'
+    );
+    if (success) {
+      addToast('success', `Page ${currentPageNumber} exported as PNG`);
+    } else {
+      addToast('error', 'Failed to export page as image');
+    }
+  }, [currentPage, currentPageNumber, documentState.originalFileName, addToast]);
+
   // Undo / Redo
   const handleUndo = () => {
     const prevSnapshot = undo();
@@ -413,6 +616,7 @@ export function App() {
     onUndo: handleUndo,
     onRedo: handleRedo,
     onDeleteSelected: handleDeleteSelected,
+    onDuplicate: () => selectedObjectId && handleDuplicateObject(selectedObjectId),
     onNextPage: goToNextPage,
     onPreviousPage: goToPreviousPage,
     onEscape: () => {
@@ -463,8 +667,10 @@ export function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={handleExport}
+        onExportPageImage={handleExportPageAsImage}
         onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        onOpenDocInfo={() => setIsDocumentInfoOpen(true)}
         hasDocument={Boolean(currentPage)}
         isExporting={exportState.isOpen && exportState.status === 'exporting'}
       />
@@ -506,10 +712,17 @@ export function App() {
           onAddObject={handleAddObject}
           onUpdateObject={handleUpdateObject}
           onDeleteSelected={handleDeleteSelected}
+          onDuplicateObject={handleDuplicateObject}
+          onReorderObject={handleReorderObject}
           onCommitOperation={() => commitSnapshot()}
           onUploadClick={handleUploadClick}
           onLoadSample={handleLoadSample}
           onImageUploadClick={handleImageUploadClick}
+          onOpenSignatureDialog={() => setIsSignatureOpen(true)}
+          onOpenStampDialog={() => setIsStampOpen(true)}
+          onOpenOrganizePages={() => setIsOrganizePagesOpen(true)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onPreviousPage={goToPreviousPage}
           onNextPage={goToNextPage}
           onZoomIn={zoomIn}
@@ -546,6 +759,45 @@ export function App() {
       <ShortcutsDialog
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
+      />
+
+      <SignatureDialog
+        isOpen={isSignatureOpen}
+        onClose={() => setIsSignatureOpen(false)}
+        onInsertSignature={handleInsertSignature}
+      />
+
+      <StampDialog
+        isOpen={isStampOpen}
+        onClose={() => setIsStampOpen(false)}
+        onInsertStamp={handleInsertStamp}
+      />
+
+      <OrganizePagesDialog
+        isOpen={isOrganizePagesOpen}
+        pages={documentState.pages}
+        currentPageId={documentState.currentPageId}
+        pdfDocument={pdfDocument}
+        onClose={() => setIsOrganizePagesOpen(false)}
+        onSelectPage={setCurrentPageId}
+        onRotatePage={handleRotatePage}
+        onRotateAllPages={handleRotateAllPages}
+        onDeletePage={handleDeletePagePrompt}
+        onDuplicatePage={handleDuplicatePage}
+        onReorderPages={handleReorderPages}
+        onAddBlankPage={() => {
+          addBlankPage('A4', 'portrait');
+          addToast('success', 'Blank page added');
+        }}
+      />
+
+      <DocumentInfoDialog
+        isOpen={isDocumentInfoOpen}
+        onClose={() => setIsDocumentInfoOpen(false)}
+        fileName={documentState.originalFileName}
+        fileBytes={documentState.originalBytes}
+        pages={documentState.pages}
+        currentPageIndex={Math.max(0, currentPageNumber - 1)}
       />
 
       <ExportDialog

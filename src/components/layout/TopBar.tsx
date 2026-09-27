@@ -5,6 +5,8 @@ import {
   Download,
   PanelLeft,
   Keyboard,
+  Info,
+  FileImage,
 } from 'lucide-react';
 
 interface TopBarProps {
@@ -15,8 +17,10 @@ interface TopBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onExport: () => void;
+  onExportPageImage?: () => void;
   onToggleSidebar: () => void;
   onOpenShortcuts: () => void;
+  onOpenDocInfo?: () => void;
   hasDocument: boolean;
   isExporting?: boolean;
 }
@@ -29,8 +33,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   onUndo,
   onRedo,
   onExport,
+  onExportPageImage,
   onToggleSidebar,
   onOpenShortcuts,
+  onOpenDocInfo,
   hasDocument,
   isExporting = false,
 }) => {
@@ -82,6 +88,18 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="topbar-right">
+        {onOpenDocInfo && (
+          <button
+            className="icon-btn"
+            onClick={onOpenDocInfo}
+            disabled={!hasDocument}
+            title="Document Properties (Info)"
+            aria-label="Document Properties"
+          >
+            <Info size={17} />
+          </button>
+        )}
+
         <button
           className="icon-btn"
           onClick={onOpenShortcuts}
@@ -90,6 +108,19 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <Keyboard size={17} />
         </button>
+
+        {onExportPageImage && (
+          <button
+            className="btn-secondary"
+            onClick={onExportPageImage}
+            disabled={!hasDocument}
+            title="Export current page as high-res PNG image"
+            style={{ height: 34, padding: '0 12px', fontSize: 13, gap: 6 }}
+          >
+            <FileImage size={15} />
+            <span>Export Page</span>
+          </button>
+        )}
 
         <button
           className="btn-primary"

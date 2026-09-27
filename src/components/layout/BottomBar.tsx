@@ -6,6 +6,9 @@ import {
   ZoomOut,
   RotateCcw,
   Maximize2,
+  LayoutGrid,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface BottomBarProps {
@@ -18,6 +21,9 @@ interface BottomBarProps {
   onZoomOut: () => void;
   onResetZoom: () => void;
   onFitWidth?: () => void;
+  onOpenOrganizePages?: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
   disabled?: boolean;
 }
 
@@ -31,6 +37,9 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   onZoomOut,
   onResetZoom,
   onFitWidth,
+  onOpenOrganizePages,
+  theme = 'light',
+  onToggleTheme,
   disabled = false,
 }) => {
   return (
@@ -59,7 +68,22 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         >
           <ChevronRight size={18} />
         </button>
+
+        {onOpenOrganizePages && (
+          <button
+            className="icon-btn"
+            onClick={onOpenOrganizePages}
+            disabled={disabled}
+            title="Organize Pages Grid (iLovePDF style)"
+            aria-label="Organize Pages"
+            style={{ marginLeft: 2 }}
+          >
+            <LayoutGrid size={15} />
+          </button>
+        )}
       </div>
+
+      <div className="v-divider" style={{ height: 16 }} />
 
       <div className="zoom-controls">
         <button
@@ -109,7 +133,22 @@ export const BottomBar: React.FC<BottomBarProps> = ({
             <Maximize2 size={15} />
           </button>
         )}
+
+        {onToggleTheme && (
+          <>
+            <div className="v-divider" style={{ height: 16 }} />
+            <button
+              className="icon-btn"
+              onClick={onToggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              aria-label="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+          </>
+        )}
       </div>
     </footer>
   );
 };
+

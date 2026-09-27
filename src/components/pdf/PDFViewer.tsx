@@ -17,6 +17,8 @@ interface PDFViewerProps {
   onAddObject: (obj: EditorObject) => void;
   onUpdateObject: (id: string, updates: Partial<EditorObject>) => void;
   onDeleteObject: (id: string) => void;
+  onDuplicateObject?: (id: string) => void;
+  onReorderObject?: (id: string, action: 'front' | 'back' | 'forward' | 'backward') => void;
   onCommitOperation?: () => void;
 }
 
@@ -32,6 +34,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   onAddObject,
   onUpdateObject,
   onDeleteObject,
+  onDuplicateObject,
+  onReorderObject,
   onCommitOperation,
 }) => {
   const displayWidth = page.width * zoom;
@@ -67,6 +71,8 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
         onAddObject={onAddObject}
         onUpdateObject={onUpdateObject}
         onDeleteObject={onDeleteObject}
+        onDuplicateObject={onDuplicateObject}
+        onReorderObject={onReorderObject}
         onCommitOperation={onCommitOperation}
       />
     </div>
