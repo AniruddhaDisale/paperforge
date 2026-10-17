@@ -33,8 +33,12 @@ export async function loadPdfDocument(
   password?: string
 ): Promise<LoadedPdfResult> {
   try {
+    // CRITICAL: Clone ArrayBuffer before passing to PDF.js.
+    // PDF.js worker transfers the backing ArrayBuffer via postMessage,
+    // which detaches the buffer on the main thread if not cloned!
+    const clonedData = data.slice(0);
     const loadingTask = pdfjsLib.getDocument({
-      data: new Uint8Array(data),
+      data: new Uint8Array(clonedData),
       password,
     });
 

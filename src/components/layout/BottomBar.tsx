@@ -74,7 +74,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
             className="icon-btn"
             onClick={onOpenOrganizePages}
             disabled={disabled}
-            title="Organize Pages Grid (iLovePDF style)"
+            title="Organize Pages Grid"
             aria-label="Organize Pages"
             style={{ marginLeft: 2 }}
           >

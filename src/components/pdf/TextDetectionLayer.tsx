@@ -28,7 +28,9 @@ export const TextDetectionLayer: React.FC<TextDetectionLayerProps> = ({
     }
 
     let isMounted = true;
-    setIsLoading(true);
+    queueMicrotask(() => {
+      if (isMounted) setIsLoading(true);
+    });
 
     extractTextFromPage(pdfDocument, originalPageIndex)
       .then((items) => {

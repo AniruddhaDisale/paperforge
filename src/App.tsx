@@ -30,6 +30,13 @@ import { OrganizePagesDialog } from './components/dialogs/OrganizePagesDialog';
 import { DocumentInfoDialog } from './components/dialogs/DocumentInfoDialog';
 import { WatermarkDialog } from './components/dialogs/WatermarkDialog';
 import { PageNumberDialog } from './components/dialogs/PageNumberDialog';
+import { FormFillDialog } from './components/dialogs/FormFillDialog';
+import { RecoveryDialog } from './components/dialogs/RecoveryDialog';
+import { PdfToolboxModal } from './components/toolbox/PdfToolboxModal';
+import { SearchPanel } from './components/search/SearchPanel';
+import { AiAssistantPanel } from './components/ai/AiAssistantPanel';
+import { PdfCompareModal } from './components/compare/PdfCompareModal';
+import { saveRecoverySession, type RecoverySession } from './services/sessionRecoveryService';
 import { Toast, type ToastItem } from './components/common/Toast';
 import {
   normalizeImageToPng,
@@ -38,6 +45,16 @@ import {
   exportCurrentPageAsImage,
 } from './utils/fileUtils';
 import { exportPdfDocument } from './services/pdfExporter';
+
+function safeToUint8Array(buffer: ArrayBuffer | null | undefined): Uint8Array | null {
+  if (!buffer) return null;
+  try {
+    if (buffer.byteLength === 0) return null;
+    return new Uint8Array(buffer);
+  } catch {
+    return null;
+  }
+}
 
 const INITIAL_PROPERTIES: ToolProperties = {
   textColor: '#09090b',
@@ -106,6 +123,28 @@ export function App() {
   const [isDocumentInfoOpen, setIsDocumentInfoOpen] = useState(false);
   const [isWatermarkOpen, setIsWatermarkOpen] = useState(false);
   const [isPageNumberOpen, setIsPageNumberOpen] = useState(false);
+  const [isToolboxOpen, setIsToolboxOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const [isFormFillOpen, setIsFormFillOpen] = useState(false);
+  const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+
+  // Auto-save session snapshot to IndexedDB
+  useEffect(() => {
+    if (!documentState.isModified || documentState.pages.length === 0) return;
+    const timer = setTimeout(() => {
+      saveRecoverySession({
+        id: documentState.originalFileName || `session-${Date.now()}`,
+        title: documentState.originalFileName || 'Untitled Document',
+        timestamp: Date.now(),
+        pages: documentState.pages,
+        objectsByPage,
+        pdfBytes: safeToUint8Array(documentState.originalBytes) ?? undefined,
+      });
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [documentState.isModified, documentState.pages, documentState.originalFileName, objectsByPage, documentState.originalBytes]);
 
   // Dark Mode Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -208,11 +247,11 @@ export function App() {
             resetDocument();
             setObjectsByPage({});
             setSelectedObjectId(null);
-            const success = await loadPdf(file);
-            if (success) {
+            const loadedPages = await loadPdf(file);
+            if (loadedPages && loadedPages.length > 0) {
               resetHistory({
-                pages: documentState.pages,
-                currentPageId: documentState.pages[0]?.id || '',
+                pages: loadedPages,
+                currentPageId: loadedPages[0]?.id || '',
                 objects: {},
               });
               addToast('success', `Opened "${file.name}"`);
@@ -225,17 +264,17 @@ export function App() {
       resetDocument();
       setObjectsByPage({});
       setSelectedObjectId(null);
-      const success = await loadPdf(file);
-      if (success) {
+      const loadedPages = await loadPdf(file);
+      if (loadedPages && loadedPages.length > 0) {
         resetHistory({
-          pages: documentState.pages,
-          currentPageId: documentState.pages[0]?.id || '',
+          pages: loadedPages,
+          currentPageId: loadedPages[0]?.id || '',
           objects: {},
         });
         addToast('success', `Opened "${file.name}"`);
       }
     },
-    [documentState.isModified, documentState.pages, loadPdf, resetDocument, resetHistory, addToast]
+    [documentState.isModified, loadPdf, resetDocument, resetHistory, addToast]
   );
 
   const { isDraggingOver } = useFileDrop({
@@ -775,6 +814,14 @@ export function App() {
         onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onOpenDocInfo={() => setIsDocumentInfoOpen(true)}
+        onOpenToolbox={() => setIsToolboxOpen(true)}
+        onOpenSearch={() => setIsSearchOpen((prev) => !prev)}
+        onOpenAi={() => setIsAiAssistantOpen((prev) => !prev)}
+        onOpenCompare={() => setIsCompareOpen(true)}
+        onOpenForms={() => setIsFormFillOpen(true)}
+        onOpenRecovery={() => setIsRecoveryOpen(true)}
+        onToggleTheme={toggleTheme}
+        theme={theme}
         hasDocument={Boolean(currentPage)}
         isExporting={exportState.isOpen && exportState.status === 'exporting'}
       />
@@ -786,13 +833,27 @@ export function App() {
           pages={documentState.pages}
           currentPageId={documentState.currentPageId}
           pdfDocument={pdfDocument}
-          onSelectPage={setCurrentPageId}
+          onSelectPage={(pageId) => {
+            setCurrentPageId(pageId);
+            if (window.innerWidth <= 1024) {
+              setIsSidebarCollapsed(true);
+            }
+          }}
           onRotatePage={handleRotatePage}
           onDeletePage={handleDeletePagePrompt}
           onReorderPages={handleReorderPages}
           onOpenAddPageDialog={() => setIsAddPageOpen(true)}
           isCollapsed={isSidebarCollapsed || !currentPage}
         />
+
+        {/* Mobile/Tablet Sidebar Backdrop */}
+        {!isSidebarCollapsed && currentPage && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setIsSidebarCollapsed(true)}
+            aria-label="Close page sidebar backdrop"
+          />
+        )}
 
         {/* Central Workspace */}
         <Workspace
@@ -901,7 +962,7 @@ export function App() {
         isOpen={isDocumentInfoOpen}
         onClose={() => setIsDocumentInfoOpen(false)}
         fileName={documentState.originalFileName}
-        fileBytes={documentState.originalBytes}
+        fileBytes={safeToUint8Array(documentState.originalBytes)}
         pages={documentState.pages}
         currentPageIndex={Math.max(0, currentPageNumber - 1)}
       />
@@ -924,6 +985,75 @@ export function App() {
         totalPages={documentState.pages.length || 1}
         onCancel={() => setIsPageNumberOpen(false)}
         onApply={handleApplyPageNumbers}
+      />
+
+      {/* PDF Toolbox Modal (Merge, Split, Compress, Convert, Metadata) */}
+      <PdfToolboxModal
+        isOpen={isToolboxOpen}
+        onClose={() => setIsToolboxOpen(false)}
+        currentPdfBytes={safeToUint8Array(documentState.originalBytes)}
+        currentPdfDocument={pdfDocument}
+        documentTitle={documentState.originalFileName || 'document.pdf'}
+        onLoadNewPdf={(file) => handlePdfSelected(file)}
+      />
+
+      {/* Full-document Search & OCR Drawer */}
+      <SearchPanel
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        pdfDocument={pdfDocument}
+        currentPageNumber={currentPageNumber}
+        onNavigateToPage={(pageNum) => {
+          const page = documentState.pages[pageNum - 1];
+          if (page) setCurrentPageId(page.id);
+        }}
+      />
+
+      {/* AI Document Assistant Drawer */}
+      <AiAssistantPanel
+        isOpen={isAiAssistantOpen}
+        onClose={() => setIsAiAssistantOpen(false)}
+        pdfDocument={pdfDocument}
+        onNavigateToPage={(pageNum) => {
+          const page = documentState.pages[pageNum - 1];
+          if (page) setCurrentPageId(page.id);
+        }}
+      />
+
+      {/* Compare Two PDFs Modal */}
+      <PdfCompareModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        currentPdfDocument={pdfDocument}
+        currentDocumentTitle={documentState.originalFileName || 'Current PDF'}
+      />
+
+      {/* Interactive Form Filler Dialog */}
+      <FormFillDialog
+        isOpen={isFormFillOpen}
+        onClose={() => setIsFormFillOpen(false)}
+        pdfBytes={safeToUint8Array(documentState.originalBytes)}
+        onFormSaved={async (updatedBytes) => {
+          const file = new File([new Uint8Array(updatedBytes)], documentState.originalFileName || 'form_filled.pdf', {
+            type: 'application/pdf',
+          });
+          await loadPdf(file);
+          addToast('success', 'Form fields saved directly into PDF!');
+        }}
+      />
+
+      {/* Local Session Recovery Dialog */}
+      <RecoveryDialog
+        isOpen={isRecoveryOpen}
+        onClose={() => setIsRecoveryOpen(false)}
+        onRestoreSession={(session: RecoverySession) => {
+          setDocumentPages(session.pages);
+          setObjectsByPage(session.objectsByPage);
+          if (session.pages[0]) {
+            setCurrentPageId(session.pages[0].id);
+          }
+          addToast('success', `Restored session "${session.title}"`);
+        }}
       />
 
       {/* Non-intrusive Toasts */}

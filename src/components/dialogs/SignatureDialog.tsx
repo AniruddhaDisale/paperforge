@@ -280,7 +280,7 @@ export const SignatureDialog: React.FC<SignatureDialogProps> = ({
               <div className="sig-canvas-container">
                 <canvas
                   ref={canvasRef}
-                  style={{ width: '100%', height: '100%', display: 'block' }}
+                  style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}

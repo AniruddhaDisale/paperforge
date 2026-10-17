@@ -11,8 +11,8 @@ interface UsePdfDocumentReturn {
   loadingMessage: string;
   error: string | null;
   isPasswordRequired: boolean;
-  loadPdf: (file: File, password?: string) => Promise<boolean>;
-  retryWithPassword: (password: string) => Promise<boolean>;
+  loadPdf: (file: File, password?: string) => Promise<PageModel[] | null>;
+  retryWithPassword: (password: string) => Promise<PageModel[] | null>;
   setCurrentPageId: (pageId: string) => void;
   goToNextPage: () => void;
   goToPreviousPage: () => void;
@@ -67,23 +67,24 @@ export function usePdfDocument(): UsePdfDocumentReturn {
   }, [pdfDocument]);
 
   const loadPdf = useCallback(
-    async (file: File, password?: string): Promise<boolean> => {
+    async (file: File, password?: string): Promise<PageModel[] | null> => {
       setIsLoading(true);
       setLoadingMessage('Opening PDF document...');
       setError(null);
       setIsPasswordRequired(false);
 
       try {
-        const bytes = await file.arrayBuffer();
-        pendingFileRef.current = { file, bytes };
+        const rawBytes = await file.arrayBuffer();
+        const preservedBytes = rawBytes.slice(0);
+        pendingFileRef.current = { file, bytes: rawBytes.slice(0) };
 
-        const { pdfDocument: loadedDoc, pages } = await loadPdfDocument(bytes, password);
+        const { pdfDocument: loadedDoc, pages } = await loadPdfDocument(rawBytes.slice(0), password);
 
         setPdfDocument(loadedDoc);
         setDocumentState({
           originalFile: file,
           originalFileName: file.name,
-          originalBytes: bytes,
+          originalBytes: preservedBytes,
           pages,
           currentPageId: pages[0]?.id || '',
           zoom: 1.0,
@@ -91,29 +92,29 @@ export function usePdfDocument(): UsePdfDocumentReturn {
         });
 
         setIsLoading(false);
-        return true;
+        return pages;
       } catch (err: unknown) {
         setIsLoading(false);
         const errObj = typeof err === 'object' && err !== null ? (err as { name?: string; message?: string }) : null;
         if (err instanceof PasswordRequiredError || errObj?.name === 'PasswordException') {
           setIsPasswordRequired(true);
-          return false;
+          return null;
         }
 
         const msg =
           errObj?.message || 'Could not open PDF file. The file may be damaged or in an unsupported format.';
         setError(msg);
-        return false;
+        return null;
       }
     },
     []
   );
 
   const retryWithPassword = useCallback(
-    async (password: string): Promise<boolean> => {
+    async (password: string): Promise<PageModel[] | null> => {
       if (!pendingFileRef.current) {
         setError('No pending file to unlock.');
-        return false;
+        return null;
       }
 
       setIsLoading(true);
@@ -122,13 +123,14 @@ export function usePdfDocument(): UsePdfDocumentReturn {
 
       try {
         const { file, bytes } = pendingFileRef.current;
-        const { pdfDocument: loadedDoc, pages } = await loadPdfDocument(bytes, password);
+        const preservedBytes = bytes.slice(0);
+        const { pdfDocument: loadedDoc, pages } = await loadPdfDocument(bytes.slice(0), password);
 
         setPdfDocument(loadedDoc);
         setDocumentState({
           originalFile: file,
           originalFileName: file.name,
-          originalBytes: bytes,
+          originalBytes: preservedBytes,
           pages,
           currentPageId: pages[0]?.id || '',
           zoom: 1.0,
@@ -137,16 +139,16 @@ export function usePdfDocument(): UsePdfDocumentReturn {
 
         setIsPasswordRequired(false);
         setIsLoading(false);
-        return true;
+        return pages;
       } catch (err: unknown) {
         setIsLoading(false);
         const errObj = typeof err === 'object' && err !== null ? (err as { name?: string }) : null;
         if (err instanceof PasswordRequiredError || errObj?.name === 'PasswordException') {
           setError('Incorrect password. Please try again.');
-          return false;
+          return null;
         }
         setError('Failed to unlock PDF with supplied password.');
-        return false;
+        return null;
       }
     },
     []

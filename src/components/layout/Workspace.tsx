@@ -1,12 +1,13 @@
 import React, { useRef } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { Upload, FileText, ShieldCheck } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import type { PageModel } from '../../types/pdf';
 import type { ToolType, ShapeType, ToolProperties, EditorObject } from '../../types/editor';
 import { EditorToolbar } from '../toolbar/EditorToolbar';
 import { PropertyBar } from '../toolbar/PropertyBar';
 import { PDFViewer } from '../pdf/PDFViewer';
 import { BottomBar } from './BottomBar';
+import { LandingView } from '../landing/LandingView';
 
 interface WorkspaceProps {
   currentPage: PageModel | null;
@@ -132,7 +133,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       </div>
 
       {/* Main Document Canvas Viewport */}
-      <div ref={documentAreaRef} className="document-area">
+      <div ref={documentAreaRef} className={`document-area ${!currentPage ? 'landing-mode' : ''}`}>
         {isLoading ? (
           <div className="empty-state-container">
             <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
@@ -141,42 +142,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
             </p>
           </div>
         ) : !currentPage ? (
-          <div className="empty-state-container">
-            <div className="empty-state-icon">
-              <FileText size={32} />
-            </div>
-
-            <h2 className="empty-state-title">Open a PDF to get started</h2>
-            <p className="empty-state-desc">
-              Upload a PDF document to annotate with text, freehand drawing, highlights, shapes, images, signatures, and stamps.
-            </p>
-
-            <div className="empty-state-actions">
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button className="upload-primary-btn" onClick={onUploadClick}>
-                  <Upload size={17} />
-                  <span>Upload PDF</span>
-                </button>
-                {onLoadSample && (
-                  <button
-                    className="btn-secondary"
-                    style={{ height: 42, padding: '0 18px', fontSize: 14, borderRadius: 'var(--radius-md)' }}
-                    onClick={onLoadSample}
-                    title="Load sample document to test editor"
-                  >
-                    <FileText size={16} />
-                    <span>Try Sample PDF</span>
-                  </button>
-                )}
-              </div>
-              <span className="empty-state-hint">or drag and drop a PDF file here</span>
-            </div>
-
-            <div className="privacy-badge">
-              <ShieldCheck size={15} />
-              <span>Your files stay securely in your browser.</span>
-            </div>
-          </div>
+          <LandingView
+            onUploadClick={onUploadClick}
+            onLoadSample={onLoadSample}
+            onSelectToolPreset={onSelectTool}
+          />
         ) : (
           <PDFViewer
             page={currentPage}

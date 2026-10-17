@@ -69,8 +69,8 @@ export async function exportPdfDocument(
   const destPdf = await PDFDocument.create();
 
   let srcPdf: PDFDocument | null = null;
-  if (documentState.originalBytes) {
-    srcPdf = await PDFDocument.load(documentState.originalBytes, {
+  if (documentState.originalBytes && documentState.originalBytes.byteLength > 0) {
+    srcPdf = await PDFDocument.load(documentState.originalBytes.slice(0), {
       ignoreEncryption: true,
     });
   }

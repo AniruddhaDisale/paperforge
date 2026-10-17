@@ -7,6 +7,14 @@ import {
   Keyboard,
   Info,
   FileImage,
+  Layers,
+  Search,
+  Bot,
+  GitCompare,
+  CheckSquare,
+  History,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface TopBarProps {
@@ -21,6 +29,14 @@ interface TopBarProps {
   onToggleSidebar: () => void;
   onOpenShortcuts: () => void;
   onOpenDocInfo?: () => void;
+  onOpenToolbox?: () => void;
+  onOpenSearch?: () => void;
+  onOpenAi?: () => void;
+  onOpenCompare?: () => void;
+  onOpenForms?: () => void;
+  onOpenRecovery?: () => void;
+  onToggleTheme?: () => void;
+  theme?: 'light' | 'dark';
   hasDocument: boolean;
   isExporting?: boolean;
 }
@@ -37,6 +53,14 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleSidebar,
   onOpenShortcuts,
   onOpenDocInfo,
+  onOpenToolbox,
+  onOpenSearch,
+  onOpenAi,
+  onOpenCompare,
+  onOpenForms,
+  onOpenRecovery,
+  onToggleTheme,
+  theme = 'light',
   hasDocument,
   isExporting = false,
 }) => {
@@ -52,9 +76,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           <PanelLeft size={18} />
         </button>
 
-        <div className="brand">
-          <div className="brand-icon">P</div>
-          <span>PaperForge</span>
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="brand-icon">
+            <img src="/favicon.svg" alt="PaperForge" width="24" height="24" />
+          </div>
+          <span className="brand-text">PaperForge</span>
         </div>
 
         {documentTitle && (
@@ -66,6 +92,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="topbar-center">
+        {/* Undo / Redo */}
         <button
           className="icon-btn"
           onClick={onUndo}
@@ -85,9 +112,94 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <Redo2 size={17} />
         </button>
+
+        <div style={{ width: 1, height: 18, backgroundColor: 'var(--border-color)', margin: '0 4px' }} />
+
+        {/* Feature Hub Buttons */}
+        {onOpenToolbox && (
+          <button
+            className="icon-btn"
+            onClick={onOpenToolbox}
+            title="PDF Toolbox (Merge, Split, Compress, Convert)"
+            aria-label="PDF Toolbox"
+          >
+            <Layers size={17} />
+          </button>
+        )}
+
+        {onOpenSearch && (
+          <button
+            className="icon-btn"
+            onClick={onOpenSearch}
+            disabled={!hasDocument}
+            title="Search & OCR"
+            aria-label="Search & OCR"
+          >
+            <Search size={17} />
+          </button>
+        )}
+
+        {onOpenAi && (
+          <button
+            className="icon-btn"
+            onClick={onOpenAi}
+            disabled={!hasDocument}
+            title="PaperForge AI Document Assistant"
+            aria-label="AI Document Assistant"
+            style={{ color: '#6366f1' }}
+          >
+            <Bot size={17} />
+          </button>
+        )}
+
+        {onOpenCompare && (
+          <button
+            className="icon-btn"
+            onClick={onOpenCompare}
+            disabled={!hasDocument}
+            title="Compare Two PDFs"
+            aria-label="Compare Two PDFs"
+          >
+            <GitCompare size={17} />
+          </button>
+        )}
+
+        {onOpenForms && (
+          <button
+            className="icon-btn"
+            onClick={onOpenForms}
+            disabled={!hasDocument}
+            title="Fill AcroForm Fields"
+            aria-label="PDF Forms"
+          >
+            <CheckSquare size={17} />
+          </button>
+        )}
+
+        {onOpenRecovery && (
+          <button
+            className="icon-btn"
+            onClick={onOpenRecovery}
+            title="Recent Sessions & Recovery"
+            aria-label="Recent Sessions"
+          >
+            <History size={17} />
+          </button>
+        )}
       </div>
 
       <div className="topbar-right">
+        {onToggleTheme && (
+          <button
+            className="icon-btn"
+            onClick={onToggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle Theme"
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+        )}
+
         {onOpenDocInfo && (
           <button
             className="icon-btn"

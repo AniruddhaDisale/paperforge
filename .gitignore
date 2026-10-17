@@ -27,3 +27,4 @@ dist-ssr
 DOCUMENTATION.md
 
 .vercel
+.env*
