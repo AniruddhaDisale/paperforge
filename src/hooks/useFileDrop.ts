@@ -33,14 +33,17 @@ export function useFileDrop({ onFileDrop, acceptTypes = ['application/pdf'] }: U
 
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
-
       const file = files[0];
-      const isPdf =
+      if (!file) return;
+
+      const isAccepted =
         file.type === 'application/pdf' ||
         file.name.toLowerCase().endsWith('.pdf') ||
+        file.name.toLowerCase().endsWith('.docx') ||
+        file.name.toLowerCase().endsWith('.doc') ||
         acceptTypes.includes(file.type);
 
-      if (isPdf) {
+      if (isAccepted) {
         onFileDrop(file);
       }
     },

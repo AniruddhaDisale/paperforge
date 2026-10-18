@@ -3,13 +3,24 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { Upload } from 'lucide-react';
 import type { PageModel } from '../../types/pdf';
 import type { ToolType, ShapeType, ToolProperties, EditorObject } from '../../types/editor';
+import type { DocxDocumentState, DocxStats } from '../../types/docx';
 import { EditorToolbar } from '../toolbar/EditorToolbar';
 import { PropertyBar } from '../toolbar/PropertyBar';
 import { PDFViewer } from '../pdf/PDFViewer';
 import { BottomBar } from './BottomBar';
 import { LandingView } from '../landing/LandingView';
+import { DocxEditor } from '../docx/DocxEditor';
 
 interface WorkspaceProps {
+  documentType?: 'pdf' | 'docx' | 'none';
+  docxState?: DocxDocumentState;
+  onUpdateDocxContent?: (html: string, stats: DocxStats) => void;
+  onExportDocx?: () => void;
+  onExportDocxPdf?: () => void;
+  onLoadSampleDocx?: () => void;
+  isExportingDocx?: boolean;
+  onCloseDocx?: () => void;
+
   currentPage: PageModel | null;
   currentPageNumber: number;
   totalPages: number;
@@ -52,6 +63,15 @@ interface WorkspaceProps {
 }
 
 export const Workspace: React.FC<WorkspaceProps> = ({
+  documentType = 'none',
+  docxState,
+  onUpdateDocxContent,
+  onExportDocx,
+  onExportDocxPdf,
+  onLoadSampleDocx,
+  isExportingDocx = false,
+  onCloseDocx,
+
   currentPage,
   currentPageNumber,
   totalPages,
@@ -95,6 +115,24 @@ export const Workspace: React.FC<WorkspaceProps> = ({
   const documentAreaRef = useRef<HTMLDivElement>(null);
   const selectedObject = objects.find((o) => o.id === selectedObjectId) || null;
 
+  // Render Word document editor mode
+  if (documentType === 'docx' && docxState && onUpdateDocxContent && onExportDocx && onExportDocxPdf) {
+    return (
+      <section className="workspace docx-mode" aria-label="Word document workspace">
+        <DocxEditor
+          documentState={docxState}
+          onUpdateContent={onUpdateDocxContent}
+          onExportDocx={onExportDocx}
+          onExportPdf={onExportDocxPdf}
+          onCloseDocument={onCloseDocx || (() => {})}
+          isExporting={isExportingDocx}
+        />
+      </section>
+    );
+  }
+
+  const hasPdfDocument = Boolean(currentPage);
+
   return (
     <section className="workspace" aria-label="PDF workspace">
       {/* Top Toolbar and Contextual Property Bar */}
@@ -114,10 +152,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({
           onUploadClick={onUploadClick}
           onImageUploadClick={onImageUploadClick}
           onDeleteSelected={onDeleteSelected}
-          disabled={!currentPage}
+          disabled={!hasPdfDocument}
         />
 
-        {currentPage && (
+        {hasPdfDocument && (
           <PropertyBar
             activeTool={activeTool}
             selectedObject={selectedObject}
@@ -133,7 +171,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       </div>
 
       {/* Main Document Canvas Viewport */}
-      <div ref={documentAreaRef} className={`document-area ${!currentPage ? 'landing-mode' : ''}`}>
+      <div ref={documentAreaRef} className={`document-area ${!hasPdfDocument ? 'landing-mode' : ''}`}>
         {isLoading ? (
           <div className="empty-state-container">
             <div className="spinner" style={{ width: 36, height: 36, borderWidth: 3 }} />
@@ -141,10 +179,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({
               {loadingMessage || 'Processing document...'}
             </p>
           </div>
-        ) : !currentPage ? (
+        ) : (!hasPdfDocument || !currentPage) ? (
           <LandingView
             onUploadClick={onUploadClick}
             onLoadSample={onLoadSample}
+            onLoadSampleDocx={onLoadSampleDocx}
             onSelectToolPreset={onSelectTool}
           />
         ) : (
@@ -173,7 +212,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
       {isDraggingOver && (
         <div className="drag-over-overlay">
           <Upload size={40} color="var(--primary)" />
-          <span className="drag-over-title">Drop PDF to open</span>
+          <span className="drag-over-title">Drop PDF or Word document to open</span>
         </div>
       )}
 
@@ -191,7 +230,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({
         onOpenOrganizePages={onOpenOrganizePages}
         theme={theme}
         onToggleTheme={onToggleTheme}
-        disabled={!currentPage}
+        disabled={!hasPdfDocument}
       />
     </section>
   );

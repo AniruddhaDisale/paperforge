@@ -13,6 +13,8 @@ import type {
 } from './types/editor';
 import type { PageSize } from './types/pdf';
 import { usePdfDocument } from './hooks/usePdfDocument';
+import { useDocxDocument } from './hooks/useDocxDocument';
+import { isDocxFile, isLegacyDocFile } from './services/docxService';
 import { useEditorHistory } from './hooks/useEditorHistory';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useFileDrop } from './hooks/useFileDrop';
@@ -103,6 +105,23 @@ export function App() {
     markModified,
     resetDocument,
   } = usePdfDocument();
+
+  // Word Document (.docx) state hook
+  const [activeDocType, setActiveDocType] = useState<'pdf' | 'docx' | 'none'>('none');
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+
+  const {
+    documentState: docxState,
+    isLoading: isDocxLoading,
+    loadingMessage: docxLoadingMessage,
+    error: docxError,
+    resetDocx,
+    loadDocx,
+    loadSampleDocx,
+    updateContent: updateDocxContent,
+    exportDocx,
+    exportPdf: exportDocxPdf,
+  } = useDocxDocument();
 
   // Annotations mapping: pageId -> EditorObject[]
   const [objectsByPage, setObjectsByPage] = useState<Record<string, EditorObject[]>>({});
@@ -231,24 +250,77 @@ export function App() {
     [documentState.pages, documentState.currentPageId, objectsByPage, pushState, markModified]
   );
 
-  // File drop
-  const handlePdfSelected = useCallback(
+  // Unified File Selection Handler (.pdf and .docx)
+  const handleFileSelected = useCallback(
     async (file: File) => {
-      if (documentState.isModified) {
+      // Check for Word (.docx) documents
+      if (isDocxFile(file)) {
+        if (documentState.isModified || docxState.isModified) {
+          setConfirmState({
+            isOpen: true,
+            title: 'Discard unsaved edits?',
+            message:
+              'Opening a new document will discard all unsaved edits made to the current document. Do you want to proceed?',
+            isDestructive: true,
+            onConfirm: async () => {
+              setConfirmState((prev) => ({ ...prev, isOpen: false }));
+              resetDocument();
+              resetDocx();
+              setObjectsByPage({});
+              setSelectedObjectId(null);
+              const ok = await loadDocx(file);
+              if (ok) {
+                setActiveDocType('docx');
+                addToast('success', `Opened Word document "${file.name}"`);
+              } else {
+                addToast('error', docxError || 'Could not open Word document. The file may be corrupt or encrypted.');
+              }
+            },
+          });
+          return;
+        }
+
+        resetDocument();
+        resetDocx();
+        setObjectsByPage({});
+        setSelectedObjectId(null);
+        const ok = await loadDocx(file);
+        if (ok) {
+          setActiveDocType('docx');
+          addToast('success', `Opened Word document "${file.name}"`);
+        } else {
+          addToast('error', docxError || 'Could not open Word document. The file may be corrupt or encrypted.');
+        }
+        return;
+      }
+
+      // Check for legacy binary .doc files
+      if (isLegacyDocFile(file)) {
+        addToast(
+          'error',
+          'Legacy binary .doc files are not directly supported. Please convert the file to .docx in Microsoft Word or Google Docs before opening.'
+        );
+        return;
+      }
+
+      // PDF file handling
+      if (documentState.isModified || docxState.isModified) {
         pendingNewPdfFileRef.current = file;
         setConfirmState({
           isOpen: true,
           title: 'Discard unsaved edits?',
           message:
-            'Opening a new document will discard all unsaved edits made to the current PDF. Do you want to proceed?',
+            'Opening a new document will discard all unsaved edits made to the current document. Do you want to proceed?',
           isDestructive: true,
           onConfirm: async () => {
             setConfirmState((prev) => ({ ...prev, isOpen: false }));
             resetDocument();
+            resetDocx();
             setObjectsByPage({});
             setSelectedObjectId(null);
             const loadedPages = await loadPdf(file);
             if (loadedPages && loadedPages.length > 0) {
+              setActiveDocType('pdf');
               resetHistory({
                 pages: loadedPages,
                 currentPageId: loadedPages[0]?.id || '',
@@ -262,10 +334,12 @@ export function App() {
       }
 
       resetDocument();
+      resetDocx();
       setObjectsByPage({});
       setSelectedObjectId(null);
       const loadedPages = await loadPdf(file);
       if (loadedPages && loadedPages.length > 0) {
+        setActiveDocType('pdf');
         resetHistory({
           pages: loadedPages,
           currentPageId: loadedPages[0]?.id || '',
@@ -274,11 +348,21 @@ export function App() {
         addToast('success', `Opened "${file.name}"`);
       }
     },
-    [documentState.isModified, loadPdf, resetDocument, resetHistory, addToast]
+    [
+      documentState.isModified,
+      docxState.isModified,
+      loadDocx,
+      loadPdf,
+      resetDocument,
+      resetDocx,
+      resetHistory,
+      addToast,
+      docxError,
+    ]
   );
 
   const { isDraggingOver } = useFileDrop({
-    onFileDrop: handlePdfSelected,
+    onFileDrop: handleFileSelected,
   });
 
   const handleUploadClick = () => {
@@ -291,16 +375,79 @@ export function App() {
       if (!res.ok) throw new Error('Sample file not found');
       const blob = await res.blob();
       const file = new File([blob], 'sample-document.pdf', { type: 'application/pdf' });
-      await handlePdfSelected(file);
+      await handleFileSelected(file);
     } catch {
       addToast('error', 'Could not load sample PDF.');
     }
-  }, [handlePdfSelected, addToast]);
+  }, [handleFileSelected, addToast]);
+
+  const handleLoadSampleDocx = useCallback(async () => {
+    resetDocument();
+    resetDocx();
+    setObjectsByPage({});
+    setSelectedObjectId(null);
+    const ok = await loadSampleDocx();
+    if (ok) {
+      setActiveDocType('docx');
+      addToast('success', 'Opened sample Word document');
+    }
+  }, [resetDocument, resetDocx, loadSampleDocx, addToast]);
+
+  const handleCloseDocument = useCallback(() => {
+    if (documentState.isModified || docxState.isModified) {
+      setConfirmState({
+        isOpen: true,
+        title: 'Close document?',
+        message: 'You have unsaved changes. Are you sure you want to close this document?',
+        isDestructive: true,
+        onConfirm: () => {
+          setConfirmState((prev) => ({ ...prev, isOpen: false }));
+          resetDocument();
+          resetDocx();
+          setObjectsByPage({});
+          setSelectedObjectId(null);
+          setActiveDocType('none');
+          addToast('info', 'Document closed');
+        },
+      });
+      return;
+    }
+
+    resetDocument();
+    resetDocx();
+    setObjectsByPage({});
+    setSelectedObjectId(null);
+    setActiveDocType('none');
+  }, [documentState.isModified, docxState.isModified, resetDocument, resetDocx, addToast]);
+
+  const handleExportDocx = useCallback(async () => {
+    setIsExportingDocx(true);
+    try {
+      const ok = await exportDocx();
+      if (ok) {
+        addToast('success', 'Word document (.docx) exported successfully');
+      }
+    } finally {
+      setIsExportingDocx(false);
+    }
+  }, [exportDocx, addToast]);
+
+  const handleExportDocxPdf = useCallback(async () => {
+    setIsExportingDocx(true);
+    try {
+      const ok = await exportDocxPdf();
+      if (ok) {
+        addToast('success', 'PDF exported from Word document');
+      }
+    } finally {
+      setIsExportingDocx(false);
+    }
+  }, [exportDocxPdf, addToast]);
 
   const handlePdfInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handlePdfSelected(file);
+      handleFileSelected(file);
     }
     e.target.value = '';
   };
@@ -728,8 +875,19 @@ export function App() {
     }
   };
 
-  // Export PDF
+  // Active document resolution
+  const isDocxActive = activeDocType === 'docx' && Boolean(docxState.file || docxState.rawBytes);
+  const isPdfActive = (activeDocType === 'pdf' || activeDocType === 'none') && Boolean(currentPage);
+  const hasAnyDocument = isDocxActive || isPdfActive;
+  const currentActiveDocType: 'pdf' | 'docx' | 'none' = isDocxActive ? 'docx' : isPdfActive ? 'pdf' : 'none';
+
+  // Export document (Word or PDF)
   const handleExport = async () => {
+    if (currentActiveDocType === 'docx') {
+      await handleExportDocx();
+      return;
+    }
+
     if (!pdfDocument && documentState.pages.length === 0) return;
 
     setExportState({ isOpen: true, status: 'exporting' });
@@ -789,7 +947,7 @@ export function App() {
       <input
         ref={pdfInputRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         style={{ display: 'none' }}
         onChange={handlePdfInputChange}
       />
@@ -803,10 +961,15 @@ export function App() {
 
       {/* Top Bar */}
       <TopBar
-        documentTitle={documentState.originalFileName || (currentPage ? 'Untitled Document' : null)}
-        isModified={documentState.isModified}
-        canUndo={canUndo}
-        canRedo={canRedo}
+        documentTitle={
+          currentActiveDocType === 'docx'
+            ? (docxState.fileName || 'Untitled.docx')
+            : (documentState.originalFileName || (currentPage ? 'Untitled Document' : null))
+        }
+        documentType={currentActiveDocType === 'none' ? null : currentActiveDocType}
+        isModified={currentActiveDocType === 'docx' ? docxState.isModified : documentState.isModified}
+        canUndo={currentActiveDocType === 'docx' ? false : canUndo}
+        canRedo={currentActiveDocType === 'docx' ? false : canRedo}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={handleExport}
@@ -820,10 +983,11 @@ export function App() {
         onOpenCompare={() => setIsCompareOpen(true)}
         onOpenForms={() => setIsFormFillOpen(true)}
         onOpenRecovery={() => setIsRecoveryOpen(true)}
+        onCloseDocument={handleCloseDocument}
         onToggleTheme={toggleTheme}
         theme={theme}
-        hasDocument={Boolean(currentPage)}
-        isExporting={exportState.isOpen && exportState.status === 'exporting'}
+        hasDocument={hasAnyDocument}
+        isExporting={(exportState.isOpen && exportState.status === 'exporting') || isExportingDocx}
       />
 
       {/* Main Layout Area */}
@@ -843,11 +1007,11 @@ export function App() {
           onDeletePage={handleDeletePagePrompt}
           onReorderPages={handleReorderPages}
           onOpenAddPageDialog={() => setIsAddPageOpen(true)}
-          isCollapsed={isSidebarCollapsed || !currentPage}
+          isCollapsed={isSidebarCollapsed || currentActiveDocType !== 'pdf' || !currentPage}
         />
 
         {/* Mobile/Tablet Sidebar Backdrop */}
-        {!isSidebarCollapsed && currentPage && (
+        {!isSidebarCollapsed && currentPage && currentActiveDocType === 'pdf' && (
           <div
             className="sidebar-backdrop"
             onClick={() => setIsSidebarCollapsed(true)}
@@ -857,6 +1021,15 @@ export function App() {
 
         {/* Central Workspace */}
         <Workspace
+          documentType={currentActiveDocType}
+          docxState={docxState}
+          onUpdateDocxContent={updateDocxContent}
+          onExportDocx={handleExportDocx}
+          onExportDocxPdf={handleExportDocxPdf}
+          onLoadSampleDocx={handleLoadSampleDocx}
+          isExportingDocx={isExportingDocx}
+          onCloseDocx={handleCloseDocument}
+
           currentPage={currentPage}
           currentPageNumber={currentPageNumber}
           totalPages={documentState.pages.length}
@@ -867,8 +1040,8 @@ export function App() {
           properties={properties}
           objects={currentPageObjects}
           selectedObjectId={selectedObjectId}
-          isLoading={isLoading}
-          loadingMessage={loadingMessage}
+          isLoading={isLoading || isDocxLoading}
+          loadingMessage={loadingMessage || docxLoadingMessage}
           isDraggingOver={isDraggingOver}
           onSelectTool={setActiveTool}
           onSelectShapeType={setSelectedShapeType}
@@ -994,7 +1167,7 @@ export function App() {
         currentPdfBytes={safeToUint8Array(documentState.originalBytes)}
         currentPdfDocument={pdfDocument}
         documentTitle={documentState.originalFileName || 'document.pdf'}
-        onLoadNewPdf={(file) => handlePdfSelected(file)}
+        onLoadNewPdf={(file) => handleFileSelected(file)}
       />
 
       {/* Full-document Search & OCR Drawer */}
