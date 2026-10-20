@@ -529,7 +529,7 @@ export const DocxEditor: React.FC<DocxEditorProps> = ({
         <div
           className="docx-paper-sheet"
           style={{
-            transform: `scale(${zoom})`,
+            transform: zoom === 1 ? undefined : `scale(${zoom})`,
             transformOrigin: 'top center',
           }}
         >
